@@ -24,7 +24,8 @@
 
     function onEditServerNameClick(e) {
 
-        var page = dom.parentWithClass(this, 'page');
+        DashboardPage.lastAppUpdateCheck = null;
+        DashboardPage.lastPluginUpdateCheck = null;
 
         require(['prompt'], function (prompt) {
 
@@ -787,7 +788,7 @@
                 });
             }
 
-            if (item && item.PrimaryImageTag) {
+        if (systemInfo.WanAddress) {
 
                 return ApiClient.getScaledImageUrl(item.PrimaryImageItemId, {
                     type: "Primary",
@@ -811,7 +812,7 @@
 
             if (tasks.filter(function (t) {
 
-                return t.Key == DashboardPage.systemUpdateTaskKey;
+            ApiClient.getAvailableApplicationUpdate().done(function (packageInfo) {
 
             }).length) {
 
@@ -1414,4 +1415,5 @@
         });
 
     });
-});
+
+})();
