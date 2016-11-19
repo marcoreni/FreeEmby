@@ -58,6 +58,7 @@ namespace MediaBrowser.Common.Implementations.Security
         private readonly IHttpClient _httpClient;
         private readonly IJsonSerializer _jsonSerializer;
         private readonly IApplicationHost _appHost;
+        private readonly ILogger _logger;
         private readonly IApplicationPaths _appPaths;
 
         private IEnumerable<IRequiresRegistration> _registeredEntities;
@@ -84,6 +85,7 @@ namespace MediaBrowser.Common.Implementations.Security
             _httpClient = httpClient;
             _jsonSerializer = jsonSerializer;
             _appPaths = appPaths;
+            _logger = logManager.GetLogger("SecurityManager");
         }
 
         /// <summary>
