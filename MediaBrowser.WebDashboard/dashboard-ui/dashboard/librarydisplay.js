@@ -1,22 +1,27 @@
 ﻿define(['globalize', 'emby-checkbox', 'emby-button'], function (globalize) {
+    'use strict';
 
     function getTabs() {
         return [
         {
             href: 'library.html',
-            name: globalize.translate('HeaderLibraries')
+            name: Globalize.translate('HeaderLibraries')
         },
          {
              href: 'librarydisplay.html',
-             name: globalize.translate('TabDisplay')
+             name: Globalize.translate('TabDisplay')
          },
          {
-             href: 'librarypathmapping.html',
-             name: globalize.translate('TabPathSubstitution')
+             href: 'metadataimages.html',
+             name: Globalize.translate('TabMetadata')
+         },
+         {
+             href: 'metadatanfo.html',
+             name: Globalize.translate('TabNfoSettings')
          },
          {
              href: 'librarysettings.html',
-             name: globalize.translate('TabAdvanced')
+             name: Globalize.translate('TabAdvanced')
          }];
     }
 

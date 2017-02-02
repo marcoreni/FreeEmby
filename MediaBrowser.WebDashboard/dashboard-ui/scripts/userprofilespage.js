@@ -1,4 +1,5 @@
 ﻿define(['jQuery', 'humanedate', 'paper-icon-button-light', 'cardStyle'], function ($) {
+    'use strict';
 
     function deleteUser(page, id) {
 
@@ -68,13 +69,13 @@
                     switch (id) {
 
                         case 'open':
-                            Dashboard.navigate('useredit.html?userid=' + userId);
+                            Dashboard.navigate('useredit.html?userId=' + userId);
                             break;
                         case 'access':
-                            Dashboard.navigate('userlibraryaccess.html?userid=' + userId);
+                            Dashboard.navigate('userlibraryaccess.html?userId=' + userId);
                             break;
                         case 'parentalcontrol':
-                            Dashboard.navigate('userparentalcontrol.html?userid=' + userId);
+                            Dashboard.navigate('userparentalcontrol.html?userId=' + userId);
                             break;
                         case 'delete':
                             deleteUser(page, userId);
@@ -230,9 +231,9 @@
 
         require(['actionsheet'], function (actionsheet) {
 
-            var card = $(elem).parents('.card');
-            var page = $(elem).parents('.page');
-            var id = card.attr('data-id');
+            var card = $(elem).parents('.card')[0];
+            var page = $(elem).parents('.page')[0];
+            var id = card.getAttribute('data-id');
 
             actionsheet.show({
                 items: menuItems,

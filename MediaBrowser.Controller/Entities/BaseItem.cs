@@ -5,7 +5,6 @@ using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Drawing;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.LiveTv;
-using MediaBrowser.Controller.Localization;
 using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Configuration;
@@ -19,14 +18,20 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using CommonIO;
+using MediaBrowser.Common.IO;
+using MediaBrowser.Controller.Extensions;
+using MediaBrowser.Controller.IO;
 using MediaBrowser.Controller.Sorting;
+using MediaBrowser.Model.Extensions;
+using MediaBrowser.Model.Globalization;
+using MediaBrowser.Model.IO;
 using MediaBrowser.Model.LiveTv;
 using MediaBrowser.Model.Providers;
+using MediaBrowser.Model.Querying;
+using MediaBrowser.Model.Serialization;
 
 namespace MediaBrowser.Controller.Entities
 {
@@ -48,6 +53,7 @@ namespace MediaBrowser.Controller.Entities
             ImageInfos = new List<ItemImageInfo>();
             InheritedTags = new List<string>();
             ProductionLocations = new List<string>();
+            SourceType = SourceType.Library;
         }
 
         public static readonly char[] SlugReplaceChars = { '?', '/', '&' };
@@ -138,6 +144,15 @@ namespace MediaBrowser.Controller.Entities
             }
         }
 
+        [IgnoreDataMember]
+        public virtual bool SupportsPositionTicksResume
+        {
+            get
+            {
+                return false;
+            }
+        }
+
         public bool DetectIsInMixedFolder()
         {
             if (SupportsIsInMixedFolderDetection)
@@ -199,6 +214,19 @@ namespace MediaBrowser.Controller.Entities
             get { return PremiereDate.HasValue && PremiereDate.Value.ToLocalTime().Date >= DateTime.Now.Date; }
         }
 
+        public int? TotalBitrate { get; set; }
+        public ExtraType? ExtraType { get; set; }
+
+        [IgnoreDataMember]
+        public bool IsThemeMedia
+        {
+            get
+            {
+                return ExtraType.HasValue && (ExtraType.Value == Model.Entities.ExtraType.ThemeSong || ExtraType.Value == Model.Entities.ExtraType.ThemeVideo);
+            }
+        }
+
+        [IgnoreDataMember]
         public string OriginalTitle { get; set; }
 
         /// <summary>
@@ -245,9 +273,6 @@ namespace MediaBrowser.Controller.Entities
         public virtual string Path { get; set; }
 
         [IgnoreDataMember]
-        public bool IsOffline { get; set; }
-
-        [IgnoreDataMember]
         public virtual SourceType SourceType { get; set; }
 
         /// <summary>
@@ -279,27 +304,10 @@ namespace MediaBrowser.Controller.Entities
         /// If this content came from an external service, the id of the content on that service
         /// </summary>
         [IgnoreDataMember]
-        public string ExternalId
-        {
-            get { return this.GetProviderId("ProviderExternalId"); }
-            set
-            {
-                this.SetProviderId("ProviderExternalId", value);
-            }
-        }
+        public string ExternalId { get; set; }
 
         [IgnoreDataMember]
         public string ExternalSeriesId { get; set; }
-
-        [IgnoreDataMember]
-        public string ExternalSeriesIdLegacy
-        {
-            get { return this.GetProviderId("ProviderExternalSeriesId"); }
-            set
-            {
-                this.SetProviderId("ProviderExternalSeriesId", value);
-            }
-        }
 
         /// <summary>
         /// Gets or sets the etag.
@@ -326,20 +334,6 @@ namespace MediaBrowser.Controller.Entities
                 // An item that belongs to another item but is not part of the Parent-Child tree
                 return !IsFolder && ParentId == Guid.Empty && LocationType == LocationType.FileSystem;
             }
-        }
-
-        public Task UpdateIsOffline(bool newValue)
-        {
-            var item = this;
-
-            if (item.IsOffline != newValue)
-            {
-                item.IsOffline = newValue;
-                // this is creating too many repeated db updates
-                //return item.UpdateToRepository(ItemUpdateType.None, CancellationToken.None);
-            }
-
-            return Task.FromResult(true);
         }
 
         /// <summary>
@@ -1031,7 +1025,7 @@ namespace MediaBrowser.Controller.Entities
                         audio = dbItem;
                     }
 
-                    audio.ExtraType = ExtraType.ThemeSong;
+                    audio.ExtraType = MediaBrowser.Model.Entities.ExtraType.ThemeSong;
 
                     return audio;
 
@@ -1061,7 +1055,7 @@ namespace MediaBrowser.Controller.Entities
                         item = dbItem;
                     }
 
-                    item.ExtraType = ExtraType.ThemeVideo;
+                    item.ExtraType = MediaBrowser.Model.Entities.ExtraType.ThemeVideo;
 
                     return item;
 
@@ -1211,7 +1205,7 @@ namespace MediaBrowser.Controller.Entities
 
                 if (!i.IsThemeMedia)
                 {
-                    i.ExtraType = ExtraType.ThemeVideo;
+                    i.ExtraType = MediaBrowser.Model.Entities.ExtraType.ThemeVideo;
                     subOptions.ForceSave = true;
                 }
 
@@ -1241,7 +1235,7 @@ namespace MediaBrowser.Controller.Entities
 
                 if (!i.IsThemeMedia)
                 {
-                    i.ExtraType = ExtraType.ThemeSong;
+                    i.ExtraType = MediaBrowser.Model.Entities.ExtraType.ThemeSong;
                     subOptions.ForceSave = true;
                 }
 
@@ -1345,6 +1339,11 @@ namespace MediaBrowser.Controller.Entities
 
             if (string.IsNullOrWhiteSpace(lang))
             {
+                lang = LibraryManager.GetLibraryOptions(this).PreferredMetadataLanguage;
+            }
+
+            if (string.IsNullOrWhiteSpace(lang))
+            {
                 lang = ConfigurationManager.Configuration.PreferredMetadataLanguage;
             }
 
@@ -1371,6 +1370,11 @@ namespace MediaBrowser.Controller.Entities
                 lang = LibraryManager.GetCollectionFolders(this)
                     .Select(i => i.PreferredMetadataCountryCode)
                     .FirstOrDefault(i => !string.IsNullOrWhiteSpace(i));
+            }
+
+            if (string.IsNullOrWhiteSpace(lang))
+            {
+                lang = LibraryManager.GetLibraryOptions(this).MetadataCountryCode;
             }
 
             if (string.IsNullOrWhiteSpace(lang))
@@ -1569,6 +1573,12 @@ namespace MediaBrowser.Controller.Entities
             return IsVisibleStandaloneInternal(user, true);
         }
 
+        [IgnoreDataMember]
+        public virtual bool SupportsInheritedParentImages
+        {
+            get { return false; }
+        }
+
         protected bool IsVisibleStandaloneInternal(User user, bool checkFolders)
         {
             if (!IsVisible(user))
@@ -1590,12 +1600,15 @@ namespace MediaBrowser.Controller.Entities
                     return true;
                 }
 
-                var userCollectionFolders = user.RootFolder.GetChildren(user, true).Select(i => i.Id).ToList();
-                var itemCollectionFolders = LibraryManager.GetCollectionFolders(this).Select(i => i.Id);
+                var itemCollectionFolders = LibraryManager.GetCollectionFolders(this).Select(i => i.Id).ToList();
 
-                if (!itemCollectionFolders.Any(userCollectionFolders.Contains))
+                if (itemCollectionFolders.Count > 0)
                 {
-                    return false;
+                    var userCollectionFolders = user.RootFolder.GetChildren(user, true).Select(i => i.Id).ToList();
+                    if (!itemCollectionFolders.Any(userCollectionFolders.Contains))
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -1608,6 +1621,15 @@ namespace MediaBrowser.Controller.Entities
         /// <value><c>true</c> if this instance is folder; otherwise, <c>false</c>.</value>
         [IgnoreDataMember]
         public virtual bool IsFolder
+        {
+            get
+            {
+                return false;
+            }
+        }
+
+        [IgnoreDataMember]
+        public virtual bool IsDisplayedAsFolder
         {
             get
             {
@@ -1875,19 +1897,7 @@ namespace MediaBrowser.Controller.Entities
 
             if (info.IsLocalFile)
             {
-                // Delete the source file
-                var currentFile = new FileInfo(info.Path);
-
-                // Deletion will fail if the file is hidden so remove the attribute first
-                if (currentFile.Exists)
-                {
-                    if ((currentFile.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
-                    {
-                        currentFile.Attributes &= ~FileAttributes.Hidden;
-                    }
-
-                    FileSystem.DeleteFile(currentFile.FullName);
-                }
+                FileSystem.DeleteFile(info.Path);
             }
 
             return UpdateToRepository(ItemUpdateType.ImageUpdate, CancellationToken.None);
@@ -2146,13 +2156,18 @@ namespace MediaBrowser.Controller.Entities
             {
                 MetadataCountryCode = GetPreferredMetadataCountryCode(),
                 MetadataLanguage = GetPreferredMetadataLanguage(),
-                Name = Name,
+                Name = GetNameForMetadataLookup(),
                 ProviderIds = ProviderIds,
                 IndexNumber = IndexNumber,
                 ParentIndexNumber = ParentIndexNumber,
                 Year = ProductionYear,
                 PremiereDate = PremiereDate
             };
+        }
+
+        protected virtual string GetNameForMetadataLookup()
+        {
+            return Name;
         }
 
         /// <summary>
@@ -2183,7 +2198,7 @@ namespace MediaBrowser.Controller.Entities
             return path;
         }
 
-        public virtual Task FillUserDataDtoValues(UserItemDataDto dto, UserItemData userData, BaseItemDto itemDto, User user)
+        public virtual Task FillUserDataDtoValues(UserItemDataDto dto, UserItemData userData, BaseItemDto itemDto, User user, List<ItemFields> itemFields)
         {
             if (RunTimeTicks.HasValue)
             {
@@ -2336,17 +2351,25 @@ namespace MediaBrowser.Controller.Entities
         {
             get
             {
-                if (GetParent() is AggregateFolder || this is BasePluginFolder || this is Channel)
+                if (this is BasePluginFolder || this is Channel)
                 {
                     return true;
                 }
 
                 var view = this as UserView;
-                if (view != null && string.Equals(view.ViewType, CollectionType.LiveTv, StringComparison.OrdinalIgnoreCase))
+                if (view != null)
                 {
-                    return true;
+                    if (string.Equals(view.ViewType, CollectionType.LiveTv, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                    if (string.Equals(view.ViewType, CollectionType.Channels, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
                 }
-                if (view != null && string.Equals(view.ViewType, CollectionType.Channels, StringComparison.OrdinalIgnoreCase))
+
+                if (GetParent() is AggregateFolder)
                 {
                     return true;
                 }

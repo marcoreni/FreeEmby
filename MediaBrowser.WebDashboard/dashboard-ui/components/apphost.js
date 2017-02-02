@@ -1,4 +1,5 @@
 define(['appStorage', 'browser'], function (appStorage, browser) {
+    'use strict';
 
     function getDeviceProfile() {
 
@@ -113,6 +114,21 @@ define(['appStorage', 'browser'], function (appStorage, browser) {
             element.msRequestFullscreen;
     }
 
+    function getSyncProfile() {
+        
+        return new Promise(function (resolve, reject) {
+
+            require(['browserdeviceprofile', 'qualityoptions', 'appSettings'], function (profileBuilder, qualityoptions, appSettings) {
+
+                var profile = profileBuilder();
+
+                profile.MaxStaticMusicBitrate = appSettings.maxStaticMusicBitrate();
+
+                resolve(profile);
+            });
+        });
+    }
+
     var supportedFeatures = function () {
 
         var features = [
@@ -145,11 +161,23 @@ define(['appStorage', 'browser'], function (appStorage, browser) {
         }
 
         if (supportsFullscreen()) {
-            features.push('fullscreen');
+            features.push('fullscreenchange');
         }
 
-        if (browser.chrome || (browser.safari && !browser.slow) || (browser.edge && !browser.slow)) {
+        if (browser.chrome || (browser.edge && !browser.slow)) {
             features.push('imageanalysis');
+        }
+
+        if (Dashboard.isConnectMode()) {
+            features.push('multiserver');
+        }
+
+        if (browser.tv || browser.xboxOne || browser.ps4 || browser.mobile) {
+            features.push('physicalvolumecontrol');
+        }
+
+        if (!browser.tv && !browser.xboxOne && !browser.ps4) {
+            features.push('remotecontrol');
         }
 
         return features;
@@ -159,7 +187,6 @@ define(['appStorage', 'browser'], function (appStorage, browser) {
     var version = window.dashboardVersion || '3.0';
 
     return {
-        dvrFeatureCode: 'dvr',
         getWindowState: function () {
             return document.windowState || 'Normal';
         },
@@ -212,6 +239,7 @@ define(['appStorage', 'browser'], function (appStorage, browser) {
         },
         capabilities: getCapabilities,
         preferVisualCards: browser.android || browser.chrome,
-        moreIcon: browser.safari || browser.edge ? 'dots-horiz' : 'dots-vert'
+        moreIcon: browser.safari || browser.edge ? 'dots-horiz' : 'dots-vert',
+        getSyncProfile: getSyncProfile
     };
 });

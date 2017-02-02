@@ -1,4 +1,5 @@
-﻿define(['cardBuilder', 'apphost', 'emby-itemscontainer'], function (cardBuilder, appHost) {
+﻿define(['cardBuilder', 'apphost', 'imageLoader', 'libraryBrowser', 'emby-itemscontainer'], function (cardBuilder, appHost, imageLoader, libraryBrowser) {
+    'use strict';
 
     return function (view, params) {
 
@@ -6,7 +7,8 @@
         var query = {
             UserId: Dashboard.getCurrentUserId(),
             StartIndex: 0,
-            Fields: "ChannelInfo"
+            Fields: "ChannelInfo",
+            Limit: libraryBrowser.getDefaultPageSize()
         };
 
         if (params.type == 'Recordings') {
@@ -26,7 +28,7 @@
         }
 
         function getSavedQueryKey() {
-            return LibraryBrowser.getSavedQueryKey();
+            return libraryBrowser.getSavedQueryKey();
         }
 
         function reloadItems(page) {
@@ -47,7 +49,7 @@
                 window.scrollTo(0, 0);
 
                 var html = '';
-                var pagingHtml = LibraryBrowser.getQueryPagingHtml({
+                var pagingHtml = libraryBrowser.getQueryPagingHtml({
                     startIndex: query.StartIndex,
                     limit: query.Limit,
                     totalRecordCount: result.TotalRecordCount,
@@ -75,6 +77,7 @@
                     showChannelName: params.type != 'Recordings' && params.type != 'RecordingSeries',
                     overlayMoreButton: !supportsImageAnalysis,
                     showYear: query.IsMovie && params.type == 'Recordings',
+                    showSeriesYear: params.type === 'RecordingSeries',
                     coverImage: true,
                     cardLayout: supportsImageAnalysis,
                     vibrant: supportsImageAnalysis
@@ -82,7 +85,7 @@
 
                 var elem = page.querySelector('.itemsContainer');
                 elem.innerHTML = html + pagingHtml;
-                ImageLoader.lazyChildren(elem);
+                imageLoader.lazyChildren(elem);
 
                 var i, length;
                 var elems;
@@ -107,7 +110,7 @@
                     elems[i].addEventListener('click', onPreviousPageClick);
                 }
 
-                LibraryBrowser.saveQueryValues(getSavedQueryKey(), query);
+                libraryBrowser.saveQueryValues(getSavedQueryKey(), query);
 
                 Dashboard.hideLoadingMsg();
             });
@@ -118,13 +121,6 @@
             query.ParentId = LibraryMenu.getTopParentId();
 
             var page = this;
-            var limit = LibraryBrowser.getDefaultPageSize();
-
-            // If the default page size has changed, the start index will have to be reset
-            if (limit != query.Limit) {
-                query.Limit = limit;
-                query.StartIndex = 0;
-            }
 
             if (params.IsMovie == 'true') {
                 query.IsMovie = true;
@@ -183,7 +179,7 @@
 
             var viewkey = getSavedQueryKey();
 
-            LibraryBrowser.loadSavedQueryValues(viewkey, query);
+            libraryBrowser.loadSavedQueryValues(viewkey, query);
 
             reloadItems(page);
         });

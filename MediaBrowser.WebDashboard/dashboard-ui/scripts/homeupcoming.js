@@ -1,4 +1,5 @@
-﻿define(['datetime', 'cardBuilder', 'apphost', 'emby-itemscontainer', 'scrollStyles'], function (datetime, cardBuilder, appHost) {
+﻿define(['datetime', 'cardBuilder', 'apphost', 'imageLoader', 'emby-itemscontainer', 'scrollStyles'], function (datetime, cardBuilder, appHost, imageLoader) {
+    'use strict';
 
     function getUpcomingPromise() {
 
@@ -37,7 +38,7 @@
     }
 
     function enableScrollX() {
-        return browserInfo.mobile && AppInfo.enableAppLayouts;
+        return browserInfo.mobile;
     }
 
     function getThumbShape() {
@@ -133,7 +134,7 @@
         }
 
         elem.innerHTML = html;
-        ImageLoader.lazyChildren(elem);
+        imageLoader.lazyChildren(elem);
     }
     return function (view, params, tabContent) {
 

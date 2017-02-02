@@ -37,12 +37,6 @@ namespace MediaBrowser.Common
         event EventHandler<GenericEventArgs<PackageVersionInfo>> ApplicationUpdated;
 
         /// <summary>
-        /// Gets a value indicating whether this instance is running as service.
-        /// </summary>
-        /// <value><c>true</c> if this instance is running as service; otherwise, <c>false</c>.</value>
-        bool IsRunningAsService { get; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether this instance has pending kernel reload.
         /// </summary>
         /// <value><c>true</c> if this instance has pending kernel reload; otherwise, <c>false</c>.</value>
@@ -142,7 +136,7 @@ namespace MediaBrowser.Common
         /// Gets the plugins.
         /// </summary>
         /// <value>The plugins.</value>
-        IEnumerable<IPlugin> Plugins { get; }
+        IPlugin[] Plugins { get; }
 
         /// <summary>
         /// Removes the plugin.

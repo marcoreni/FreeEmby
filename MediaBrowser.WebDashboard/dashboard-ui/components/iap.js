@@ -1,4 +1,5 @@
 ﻿define(['apphost', 'globalize', 'shell'], function (appHost, globalize, shell) {
+    'use strict';
 
     function getProductInfo(feature) {
         return null;
@@ -52,8 +53,8 @@
 
     function getPeriodicMessageIntervalMs(feature) {
 
-        if (feature == 'playback') {
-            return 259200000;
+        if (feature === 'playback') {
+            return 43200000;
         }
 
         return 0;

@@ -1,7 +1,8 @@
 ﻿define(['datetime', 'cardBuilder', 'apphost'], function (datetime, cardBuilder, appHost) {
+    'use strict';
 
     function enableScrollX() {
-        return browserInfo.mobile && AppInfo.enableAppLayouts;
+        return browserInfo.mobile;
     }
 
     function getBackdropShape() {

@@ -1,4 +1,4 @@
-﻿using CommonIO;
+﻿using MediaBrowser.Model.IO;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
@@ -14,6 +14,8 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MediaBrowser.Common.IO;
+using MediaBrowser.Controller.IO;
 
 namespace MediaBrowser.Providers.Omdb
 {
@@ -35,7 +37,7 @@ namespace MediaBrowser.Providers.Omdb
         }
 
         public async Task Fetch<T>(MetadataResult<T> itemResult, string imdbId, string language, string country, CancellationToken cancellationToken)
-            where T :BaseItem
+            where T : BaseItem
         {
             if (string.IsNullOrWhiteSpace(imdbId))
             {
@@ -44,27 +46,27 @@ namespace MediaBrowser.Providers.Omdb
 
             T item = itemResult.Item;
 
-            var result = await GetRootObject(imdbId, cancellationToken);
+            var result = await GetRootObject(imdbId, cancellationToken).ConfigureAwait(false);
 
-                // Only take the name and rating if the user's language is set to english, since Omdb has no localization
-                if (string.Equals(language, "en", StringComparison.OrdinalIgnoreCase))
+            // Only take the name and rating if the user's language is set to english, since Omdb has no localization
+            if (string.Equals(language, "en", StringComparison.OrdinalIgnoreCase))
+            {
+                item.Name = result.Title;
+
+                if (string.Equals(country, "us", StringComparison.OrdinalIgnoreCase))
                 {
-                    item.Name = result.Title;
-
-                    if (string.Equals(country, "us", StringComparison.OrdinalIgnoreCase))
-                    {
-                        item.OfficialRating = result.Rated;
-                    }
+                    item.OfficialRating = result.Rated;
                 }
+            }
 
-                int year;
+            int year;
 
-                if (!string.IsNullOrEmpty(result.Year) && result.Year.Length >= 4
-                    && int.TryParse(result.Year.Substring(0, 4), NumberStyles.Number, _usCulture, out year)
-                    && year >= 0)
-                {
-                    item.ProductionYear = year;
-                }
+            if (!string.IsNullOrEmpty(result.Year) && result.Year.Length >= 4
+                && int.TryParse(result.Year.Substring(0, 4), NumberStyles.Number, _usCulture, out year)
+                && year >= 0)
+            {
+                item.ProductionYear = year;
+            }
 
             // Seeing some bogus RT data on omdb for series, so filter it out here
             // RT doesn't even have tv series
@@ -85,33 +87,33 @@ namespace MediaBrowser.Providers.Omdb
 
             int voteCount;
 
-                if (!string.IsNullOrEmpty(result.imdbVotes)
-                    && int.TryParse(result.imdbVotes, NumberStyles.Number, _usCulture, out voteCount)
-                    && voteCount >= 0)
-                {
-                    item.VoteCount = voteCount;
-                }
+            if (!string.IsNullOrEmpty(result.imdbVotes)
+                && int.TryParse(result.imdbVotes, NumberStyles.Number, _usCulture, out voteCount)
+                && voteCount >= 0)
+            {
+                item.VoteCount = voteCount;
+            }
 
-                float imdbRating;
+            float imdbRating;
 
-                if (!string.IsNullOrEmpty(result.imdbRating)
-                    && float.TryParse(result.imdbRating, NumberStyles.Any, _usCulture, out imdbRating)
-                    && imdbRating >= 0)
-                {
-                    item.CommunityRating = imdbRating;
-                }
+            if (!string.IsNullOrEmpty(result.imdbRating)
+                && float.TryParse(result.imdbRating, NumberStyles.Any, _usCulture, out imdbRating)
+                && imdbRating >= 0)
+            {
+                item.CommunityRating = imdbRating;
+            }
 
-                if (!string.IsNullOrEmpty(result.Website))
-                {
-                    item.HomePageUrl = result.Website;
-                }
+            if (!string.IsNullOrEmpty(result.Website))
+            {
+                item.HomePageUrl = result.Website;
+            }
 
-                if (!string.IsNullOrWhiteSpace(result.imdbID))
-                {
-                    item.SetProviderId(MetadataProviders.Imdb, result.imdbID);
-                }
+            if (!string.IsNullOrWhiteSpace(result.imdbID))
+            {
+                item.SetProviderId(MetadataProviders.Imdb, result.imdbID);
+            }
 
-                ParseAdditionalMetadata(itemResult, result);
+            ParseAdditionalMetadata(itemResult, result);
         }
 
         public async Task<bool> FetchEpisodeData<T>(MetadataResult<T> itemResult, int episodeNumber, int seasonNumber, string imdbId, string language, string country, CancellationToken cancellationToken)
@@ -133,7 +135,7 @@ namespace MediaBrowser.Providers.Omdb
 
             RootObject result = null;
 
-            foreach (var episode in seasonResult.Episodes)
+            foreach (var episode in (seasonResult.Episodes ?? new RootObject[] { }))
             {
                 if (episode.Episode == episodeNumber)
                 {
@@ -219,11 +221,11 @@ namespace MediaBrowser.Providers.Omdb
 
         internal async Task<RootObject> GetRootObject(string imdbId, CancellationToken cancellationToken)
         {
-            var path = await EnsureItemInfo(imdbId, cancellationToken);
+            var path = await EnsureItemInfo(imdbId, cancellationToken).ConfigureAwait(false);
 
             string resultString;
 
-            using (Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 131072))
+            using (Stream stream = _fileSystem.GetFileStream(path, FileOpenMode.Open, FileAccessMode.Read, FileShareMode.Read))
             {
                 using (var reader = new StreamReader(stream, new UTF8Encoding(false)))
                 {
@@ -238,11 +240,11 @@ namespace MediaBrowser.Providers.Omdb
 
         internal async Task<SeasonRootObject> GetSeasonRootObject(string imdbId, int seasonId, CancellationToken cancellationToken)
         {
-            var path = await EnsureSeasonInfo(imdbId, seasonId, cancellationToken);
+            var path = await EnsureSeasonInfo(imdbId, seasonId, cancellationToken).ConfigureAwait(false);
 
             string resultString;
 
-            using (Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 131072))
+            using (Stream stream = _fileSystem.GetFileStream(path, FileOpenMode.Open, FileAccessMode.Read, FileShareMode.Read))
             {
                 using (var reader = new StreamReader(stream, new UTF8Encoding(false)))
                 {
@@ -298,7 +300,8 @@ namespace MediaBrowser.Providers.Omdb
             {
                 Url = url,
                 ResourcePool = ResourcePool,
-                CancellationToken = cancellationToken
+                CancellationToken = cancellationToken,
+                BufferContent = true
 
             }).ConfigureAwait(false))
             {
@@ -338,7 +341,8 @@ namespace MediaBrowser.Providers.Omdb
             {
                 Url = url,
                 ResourcePool = ResourcePool,
-                CancellationToken = cancellationToken
+                CancellationToken = cancellationToken,
+                BufferContent = true
 
             }).ConfigureAwait(false))
             {

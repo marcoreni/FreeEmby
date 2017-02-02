@@ -11,12 +11,11 @@ namespace MediaBrowser.Model.LiveTv
         public string RecordingPath { get; set; }
         public string MovieRecordingPath { get; set; }
         public string SeriesRecordingPath { get; set; }
-        public bool EnableAutoOrganize { get; set; }
         public bool EnableRecordingEncoding { get; set; }
         public string RecordingEncodingFormat { get; set; }
         public bool EnableRecordingSubfolders { get; set; }
         public bool EnableOriginalAudioWithEncodedRecordings { get; set; }
-        public bool EnableOriginalVideoWithEncodedRecordings { get; set; }
+        public string RecordedVideoCodec { get; set; }
 
         public List<TunerHostInfo> TunerHosts { get; set; }
         public List<ListingsProviderInfo> ListingProviders { get; set; }
@@ -26,14 +25,17 @@ namespace MediaBrowser.Model.LiveTv
 
         public string[] MediaLocationsCreated { get; set; }
 
+        public string RecordingPostProcessor { get; set; }
+        public string RecordingPostProcessorArguments { get; set; }
+
         public LiveTvOptions()
         {
             EnableMovieProviders = true;
-            EnableRecordingSubfolders = true;
             TunerHosts = new List<TunerHostInfo>();
             ListingProviders = new List<ListingsProviderInfo>();
             MediaLocationsCreated = new string[] { };
             RecordingEncodingFormat = "mp4";
+            RecordingPostProcessorArguments = "\"{path}\"";
         }
     }
 
@@ -55,8 +57,7 @@ namespace MediaBrowser.Model.LiveTv
         public string SourceB { get; set; }
         public string SourceC { get; set; }
         public string SourceD { get; set; }
-
-        public int DataVersion { get; set; }
+        public bool EnableTvgId { get; set; }
 
         public TunerHostInfo()
         {
@@ -83,6 +84,7 @@ namespace MediaBrowser.Model.LiveTv
         public string[] KidsCategories { get; set; }
         public string[] MovieCategories { get; set; }
         public NameValuePair[] ChannelMappings { get; set; }
+        public string MoviePrefix { get; set; }
 
         public ListingsProviderInfo()
         {

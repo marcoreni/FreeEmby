@@ -20,10 +20,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Common.Net;
+using MediaBrowser.Model.Cryptography;
+using MediaBrowser.Model.Text;
 
 namespace OpenSubtitlesHandler
 {
@@ -32,33 +33,22 @@ namespace OpenSubtitlesHandler
     /// </summary>
     public sealed class Utilities
     {
-        private const string XML_RPC_SERVER = "https://api.opensubtitles.org/xml-rpc";
+        public static ICryptoProvider CryptographyProvider { get; set; }
+        public static IHttpClient HttpClient { get; set; }
+        public static ITextEncoding EncodingHelper { get; set; }
+
+        private static string XML_RPC_SERVER = "https://api.opensubtitles.org/xml-rpc";
+        //private static string XML_RPC_SERVER = "https://92.240.234.122/xml-rpc";
+        private static string HostHeader = "api.opensubtitles.org:443";
 
         /// <summary>
         /// Compute movie hash
         /// </summary>
-        /// <param name="fileName">The complete media file path</param>
         /// <returns>The hash as Hexadecimal string</returns>
-        public static string ComputeHash(string fileName)
+        public static string ComputeHash(Stream stream)
         {
-			byte[] hash = MovieHasher.ComputeMovieHash(File.OpenRead(fileName));
+			byte[] hash = MovieHasher.ComputeMovieHash(stream);
             return MovieHasher.ToHexadecimal(hash);
-        }
-        /// <summary>
-        /// Compute md5 for a file
-        /// </summary>
-        /// <param name="filename">The complete file path</param>
-        /// <returns>MD5 of the file</returns>
-        public static string ComputeMd5(string filename)
-        {
-            var md5 = MD5.Create();
-            var sb = new StringBuilder();
-            Stream str = new FileStream(filename, FileMode.Open, FileAccess.Read);
-
-            foreach (var b in md5.ComputeHash(str))
-                sb.Append(b.ToString("x2").ToLower());
-            str.Close();
-            return sb.ToString();
         }
         /// <summary>
         /// Decompress data using GZip
@@ -67,15 +57,14 @@ namespace OpenSubtitlesHandler
         /// <returns>Bytes array of decompressed data</returns>
         public static byte[] Decompress(Stream dataToDecompress)
         {
-            MemoryStream target = new MemoryStream();
-
-            using (System.IO.Compression.GZipStream decompressionStream = new System.IO.Compression.GZipStream(dataToDecompress,
-                System.IO.Compression.CompressionMode.Decompress))
+            using (MemoryStream target = new MemoryStream())
             {
-                decompressionStream.CopyTo(target);
+                using (System.IO.Compression.GZipStream decompressionStream = new System.IO.Compression.GZipStream(dataToDecompress, System.IO.Compression.CompressionMode.Decompress))
+                {
+                    decompressionStream.CopyTo(target);
+                }
+                return target.ToArray();
             }
-            return target.GetBuffer();
-
         }
 
         /// <summary>
@@ -122,34 +111,29 @@ namespace OpenSubtitlesHandler
         /// <summary>
         /// Handle server response stream and decode it as given encoding string.
         /// </summary>
-        /// <param name="responseStream">The response stream. Expects a stream that doesn't support seek.</param>
-        /// <param name="encoding">The encoding that should be used to decode buffer</param>
         /// <returns>The string of the stream after decode using given encoding</returns>
-        public static string GetStreamString(Stream responseStream, Encoding encoding)
-        {
-            // Handle response, should be XML text.
-            List<byte> data = new List<byte>();
-            while (true)
-            {
-                int r = responseStream.ReadByte();
-                if (r < 0)
-                    break;
-                data.Add((byte)r);
-            }
-            responseStream.Close();
-            return encoding.GetString(data.ToArray());
-        }
-        /// <summary>
-        /// Handle server response stream and decode it as ASCII encoding string.
-        /// </summary>
-        /// <param name="responseStream">The response stream. Expects a stream that doesn't support seek.</param>
-        /// <returns>The string of the stream after decode using ASCII encoding</returns>
         public static string GetStreamString(Stream responseStream)
         {
-            return GetStreamString(responseStream, Encoding.ASCII);
+            using (responseStream)
+            {
+                // Handle response, should be XML text.
+                List<byte> data = new List<byte>();
+                while (true)
+                {
+                    int r = responseStream.ReadByte();
+                    if (r < 0)
+                        break;
+                    data.Add((byte)r);
+                }
+                var bytes = data.ToArray();
+                return EncodingHelper.GetASCIIEncoding().GetString(bytes, 0, bytes.Length);
+            }
         }
 
-        public static IHttpClient HttpClient { get; set; }
+        public static byte[] GetASCIIBytes(string text)
+        {
+            return EncodingHelper.GetASCIIEncoding().GetBytes(text);
+        }
 
         /// <summary>
         /// Send a request to the server
@@ -160,32 +144,6 @@ namespace OpenSubtitlesHandler
         public static Stream SendRequest(byte[] request, string userAgent)
         {
             return SendRequestAsync(request, userAgent, CancellationToken.None).Result;
-
-            //HttpWebRequest req = (HttpWebRequest)WebRequest.Create(XML_RPC_SERVER);
-            //req.ContentType = "text/xml";
-            //req.Host = "api.opensubtitles.org:80";
-            //req.Method = "POST";
-            //req.UserAgent = "xmlrpc-epi-php/0.2 (PHP)";
-            //req.ContentLength = request.Length;
-            //ServicePointManager.Expect100Continue = false;
-            //try
-            //{
-            //    using (Stream stm = req.GetRequestStream())
-            //    {
-            //        stm.Write(request, 0, request.Length);
-            //    }
-
-            //    WebResponse response = req.GetResponse();
-            //    return response.GetResponseStream();
-            //}
-            //catch (Exception ex)
-            //{
-            //    Stream errorStream = new MemoryStream();
-            //    byte[] dd = Encoding.ASCII.GetBytes("ERROR: " + ex.Message);
-            //    errorStream.Write(dd, 0, dd.Length);
-            //    errorStream.Position = 0;
-            //    return errorStream;
-            //}
         }
 
         public static async Task<Stream> SendRequestAsync(byte[] request, string userAgent, CancellationToken cancellationToken)
@@ -195,7 +153,7 @@ namespace OpenSubtitlesHandler
                 RequestContentBytes = request,
                 RequestContentType = "text/xml",
                 UserAgent = userAgent,
-                Host = "api.opensubtitles.org:443",
+                Host = HostHeader,
                 Url = XML_RPC_SERVER,
 
                 // Response parsing will fail with this enabled
@@ -213,32 +171,6 @@ namespace OpenSubtitlesHandler
             var result = await HttpClient.Post(options).ConfigureAwait(false);
 
             return result.Content;
-
-            //HttpWebRequest req = (HttpWebRequest)WebRequest.Create(XML_RPC_SERVER);
-            //req.ContentType = "text/xml";
-            //req.Host = "api.opensubtitles.org:80";
-            //req.Method = "POST";
-            //req.UserAgent = "xmlrpc-epi-php/0.2 (PHP)";
-            //req.ContentLength = request.Length;
-            //ServicePointManager.Expect100Continue = false;
-            //try
-            //{
-            //    using (Stream stm = req.GetRequestStream())
-            //    {
-            //        stm.Write(request, 0, request.Length);
-            //    }
-
-            //    WebResponse response = req.GetResponse();
-            //    return response.GetResponseStream();
-            //}
-            //catch (Exception ex)
-            //{
-            //    Stream errorStream = new MemoryStream();
-            //    byte[] dd = Encoding.ASCII.GetBytes("ERROR: " + ex.Message);
-            //    errorStream.Write(dd, 0, dd.Length);
-            //    errorStream.Position = 0;
-            //    return errorStream;
-            //}
         }
 
     }

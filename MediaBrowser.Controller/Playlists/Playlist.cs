@@ -5,7 +5,7 @@ using MediaBrowser.Model.Querying;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
+using MediaBrowser.Model.Serialization;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Providers;
 
@@ -153,7 +153,7 @@ namespace MediaBrowser.Controller.Playlists
                     : user.RootFolder.GetRecursiveChildren(user, new InternalItemsQuery(user)
                     {
                         IncludeItemTypes = new[] { typeof(Audio).Name },
-                        ArtistNames = new[] { musicArtist.Name }
+                        ArtistIds = new[] { musicArtist.Id.ToString("N") }
                     });
 
                 return LibraryManager.Sort(items, user, new[] { ItemSortBy.AlbumArtist, ItemSortBy.Album, ItemSortBy.SortName }, SortOrder.Ascending);

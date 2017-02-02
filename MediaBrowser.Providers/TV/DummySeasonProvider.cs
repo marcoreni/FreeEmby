@@ -1,7 +1,6 @@
 ﻿using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Localization;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Logging;
@@ -9,7 +8,10 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using CommonIO;
+using MediaBrowser.Common.IO;
+using MediaBrowser.Controller.IO;
+using MediaBrowser.Model.IO;
+using MediaBrowser.Model.Globalization;
 
 namespace MediaBrowser.Providers.TV
 {
@@ -64,28 +66,38 @@ namespace MediaBrowser.Providers.TV
                 .Distinct()
                 .ToList())
             {
-                var hasSeason = series.Children.OfType<Season>()
-                    .Any(i => i.IndexNumber.HasValue && i.IndexNumber.Value == seasonNumber);
+                var existingSeason = series.Children.OfType<Season>()
+                    .FirstOrDefault(i => i.IndexNumber.HasValue && i.IndexNumber.Value == seasonNumber);
 
-                if (!hasSeason)
+                if (existingSeason == null)
                 {
                     await AddSeason(series, seasonNumber, false, cancellationToken).ConfigureAwait(false);
 
                     hasChanges = true;
+                }
+                else if (existingSeason.IsVirtualItem)
+                {
+                    existingSeason.IsVirtualItem = false;
+                    await existingSeason.UpdateToRepository(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
                 }
             }
 
             // Unknown season - create a dummy season to put these under
             if (episodesInSeriesFolder.Any(i => !i.ParentIndexNumber.HasValue))
             {
-                var hasSeason = series.Children.OfType<Season>()
-                    .Any(i => !i.IndexNumber.HasValue);
+                var existingSeason = series.Children.OfType<Season>()
+                    .FirstOrDefault(i => !i.IndexNumber.HasValue);
 
-                if (!hasSeason)
+                if (existingSeason == null)
                 {
                     await AddSeason(series, null, false, cancellationToken).ConfigureAwait(false);
 
                     hasChanges = true;
+                }
+                else if (existingSeason.IsVirtualItem)
+                {
+                    existingSeason.IsVirtualItem = false;
+                    await existingSeason.UpdateToRepository(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
                 }
             }
 

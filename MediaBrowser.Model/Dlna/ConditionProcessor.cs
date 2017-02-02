@@ -1,6 +1,9 @@
 ﻿using MediaBrowser.Model.Extensions;
 using MediaBrowser.Model.MediaInfo;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 
 namespace MediaBrowser.Model.Dlna
 {
@@ -21,7 +24,7 @@ namespace MediaBrowser.Model.Dlna
             int? numVideoStreams,
             int? numAudioStreams,
             string videoCodecTag,
-            bool? isAvc)
+            bool? isAvc )
         {
             switch (condition.Property)
             {
@@ -86,8 +89,8 @@ namespace MediaBrowser.Model.Dlna
             }
         }
 
-        public bool IsVideoAudioConditionSatisfied(ProfileCondition condition, 
-            int? audioChannels, 
+        public bool IsVideoAudioConditionSatisfied(ProfileCondition condition,
+            int? audioChannels,
             int? audioBitrate,
             string audioProfile,
             bool? isSecondaryTrack)
@@ -116,11 +119,12 @@ namespace MediaBrowser.Model.Dlna
             }
 
             int expected;
-            if (IntHelper.TryParseCultureInvariant(condition.Value, out expected))
+            if (int.TryParse(condition.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out expected))
             {
                 switch (condition.Condition)
                 {
                     case ProfileConditionType.Equals:
+                    case ProfileConditionType.EqualsAny:
                         return currentValue.Value.Equals(expected);
                     case ProfileConditionType.GreaterThanEqual:
                         return currentValue.Value >= expected;
@@ -129,7 +133,7 @@ namespace MediaBrowser.Model.Dlna
                     case ProfileConditionType.NotEquals:
                         return !currentValue.Value.Equals(expected);
                     default:
-                        throw new InvalidOperationException("Unexpected ProfileConditionType");
+                        throw new InvalidOperationException("Unexpected ProfileConditionType: " + condition.Condition);
                 }
             }
 
@@ -149,15 +153,15 @@ namespace MediaBrowser.Model.Dlna
             switch (condition.Condition)
             {
                 case ProfileConditionType.EqualsAny:
-                {
-                    return ListHelper.ContainsIgnoreCase(expected.Split('|'), currentValue);
-                }
+                    {
+                        return ListHelper.ContainsIgnoreCase(expected.Split('|'), currentValue);
+                    }
                 case ProfileConditionType.Equals:
                     return StringHelper.EqualsIgnoreCase(currentValue, expected);
                 case ProfileConditionType.NotEquals:
                     return !StringHelper.EqualsIgnoreCase(currentValue, expected);
                 default:
-                    throw new InvalidOperationException("Unexpected ProfileConditionType");
+                    throw new InvalidOperationException("Unexpected ProfileConditionType: " + condition.Condition);
             }
         }
 
@@ -170,7 +174,7 @@ namespace MediaBrowser.Model.Dlna
             }
 
             bool expected;
-            if (BoolHelper.TryParseCultureInvariant(condition.Value, out expected))
+            if (bool.TryParse(condition.Value, out expected))
             {
                 switch (condition.Condition)
                 {
@@ -179,7 +183,7 @@ namespace MediaBrowser.Model.Dlna
                     case ProfileConditionType.NotEquals:
                         return currentValue.Value != expected;
                     default:
-                        throw new InvalidOperationException("Unexpected ProfileConditionType");
+                        throw new InvalidOperationException("Unexpected ProfileConditionType: " + condition.Condition);
                 }
             }
 
@@ -195,7 +199,7 @@ namespace MediaBrowser.Model.Dlna
             }
 
             float expected;
-            if (FloatHelper.TryParseCultureInvariant(condition.Value, out expected))
+            if (float.TryParse(condition.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out expected))
             {
                 switch (condition.Condition)
                 {
@@ -208,13 +212,13 @@ namespace MediaBrowser.Model.Dlna
                     case ProfileConditionType.NotEquals:
                         return !currentValue.Value.Equals(expected);
                     default:
-                        throw new InvalidOperationException("Unexpected ProfileConditionType");
+                        throw new InvalidOperationException("Unexpected ProfileConditionType: " + condition.Condition);
                 }
             }
 
             return false;
         }
-        
+
         private bool IsConditionSatisfied(ProfileCondition condition, double? currentValue)
         {
             if (!currentValue.HasValue)
@@ -224,7 +228,7 @@ namespace MediaBrowser.Model.Dlna
             }
 
             double expected;
-            if (DoubleHelper.TryParseCultureInvariant(condition.Value, out expected))
+            if (double.TryParse(condition.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out expected))
             {
                 switch (condition.Condition)
                 {
@@ -237,13 +241,13 @@ namespace MediaBrowser.Model.Dlna
                     case ProfileConditionType.NotEquals:
                         return !currentValue.Value.Equals(expected);
                     default:
-                        throw new InvalidOperationException("Unexpected ProfileConditionType");
+                        throw new InvalidOperationException("Unexpected ProfileConditionType: " + condition.Condition);
                 }
             }
 
             return false;
         }
-        
+
         private bool IsConditionSatisfied(ProfileCondition condition, TransportStreamTimestamp? timestamp)
         {
             if (!timestamp.HasValue)
@@ -251,9 +255,9 @@ namespace MediaBrowser.Model.Dlna
                 // If the value is unknown, it satisfies if not marked as required
                 return !condition.IsRequired;
             }
-            
+
             TransportStreamTimestamp expected = (TransportStreamTimestamp)Enum.Parse(typeof(TransportStreamTimestamp), condition.Value, true);
-            
+
             switch (condition.Condition)
             {
                 case ProfileConditionType.Equals:
@@ -261,7 +265,7 @@ namespace MediaBrowser.Model.Dlna
                 case ProfileConditionType.NotEquals:
                     return timestamp != expected;
                 default:
-                    throw new InvalidOperationException("Unexpected ProfileConditionType");
+                    throw new InvalidOperationException("Unexpected ProfileConditionType: " + condition.Condition);
             }
         }
     }

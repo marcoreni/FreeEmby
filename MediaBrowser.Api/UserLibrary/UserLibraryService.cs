@@ -6,14 +6,17 @@ using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
-using ServiceStack;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using CommonIO;
+using MediaBrowser.Common.IO;
+using MediaBrowser.Controller.Entities.Audio;
+using MediaBrowser.Controller.IO;
+using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Services;
 
 namespace MediaBrowser.Api.UserLibrary
 {
@@ -268,8 +271,9 @@ namespace MediaBrowser.Api.UserLibrary
         private readonly IDtoService _dtoService;
         private readonly IUserViewManager _userViewManager;
         private readonly IFileSystem _fileSystem;
+        private readonly IAuthorizationContext _authContext;
 
-        public UserLibraryService(IUserManager userManager, ILibraryManager libraryManager, IUserDataManager userDataRepository, IDtoService dtoService, IUserViewManager userViewManager, IFileSystem fileSystem)
+        public UserLibraryService(IUserManager userManager, ILibraryManager libraryManager, IUserDataManager userDataRepository, IDtoService dtoService, IUserViewManager userViewManager, IFileSystem fileSystem, IAuthorizationContext authContext)
         {
             _userManager = userManager;
             _libraryManager = libraryManager;
@@ -277,6 +281,7 @@ namespace MediaBrowser.Api.UserLibrary
             _dtoService = dtoService;
             _userViewManager = userViewManager;
             _fileSystem = fileSystem;
+            _authContext = authContext;
         }
 
         /// <summary>
@@ -313,20 +318,20 @@ namespace MediaBrowser.Api.UserLibrary
                 UserId = request.UserId
             });
 
-            var options = GetDtoOptions(request);
+            var dtoOptions = GetDtoOptions(_authContext, request);
 
             var dtos = list.Select(i =>
             {
                 var item = i.Item2[0];
                 var childCount = 0;
 
-                if (i.Item1 != null && i.Item2.Count > 0)
+                if (i.Item1 != null && (i.Item2.Count > 1 || i.Item1 is MusicAlbum))
                 {
                     item = i.Item1;
                     childCount = i.Item2.Count;
                 }
 
-                var dto = _dtoService.GetBaseItemDto(item, options, user);
+                var dto = _dtoService.GetBaseItemDto(item, dtoOptions, user);
 
                 dto.ChildCount = childCount;
 
@@ -349,7 +354,7 @@ namespace MediaBrowser.Api.UserLibrary
             // Get them from the child tree
             if (series != null)
             {
-                var dtoOptions = GetDtoOptions(request);
+                var dtoOptions = GetDtoOptions(_authContext, request);
 
                 // Avoid implicitly captured closure
                 var currentUser = user;
@@ -380,7 +385,7 @@ namespace MediaBrowser.Api.UserLibrary
             // Get them from the db
             if (movie != null)
             {
-                var dtoOptions = GetDtoOptions(request);
+                var dtoOptions = GetDtoOptions(_authContext, request);
 
                 var dtos = movie.SpecialFeatureIds
                     .Select(_libraryManager.GetItemById)
@@ -400,13 +405,6 @@ namespace MediaBrowser.Api.UserLibrary
         /// <returns>System.Object.</returns>
         public object Get(GetLocalTrailers request)
         {
-            var result = GetAsync(request);
-
-            return ToOptimizedSerializedResultUsingCache(result);
-        }
-
-        private List<BaseItemDto> GetAsync(GetLocalTrailers request)
-        {
             var user = _userManager.GetUserById(request.UserId);
 
             var item = string.IsNullOrEmpty(request.Id) ? user.RootFolder : _libraryManager.GetItemById(request.Id);
@@ -419,13 +417,13 @@ namespace MediaBrowser.Api.UserLibrary
                 trailerIds = hasTrailers.GetTrailerIds();
             }
 
-            var dtoOptions = GetDtoOptions(request);
+            var dtoOptions = GetDtoOptions(_authContext, request);
 
             var dtos = trailerIds
                 .Select(_libraryManager.GetItemById)
                 .Select(i => _dtoService.GetBaseItemDto(i, dtoOptions, user, item));
 
-            return dtos.ToList();
+            return ToOptimizedSerializedResultUsingCache(dtos);
         }
 
         /// <summary>
@@ -441,7 +439,7 @@ namespace MediaBrowser.Api.UserLibrary
 
             await RefreshItemOnDemandIfNeeded(item).ConfigureAwait(false);
 
-            var dtoOptions = GetDtoOptions(request);
+            var dtoOptions = GetDtoOptions(_authContext, request);
 
             var result = _dtoService.GetBaseItemDto(item, dtoOptions, user);
 
@@ -480,7 +478,7 @@ namespace MediaBrowser.Api.UserLibrary
 
             var item = user.RootFolder;
 
-            var dtoOptions = GetDtoOptions(request);
+            var dtoOptions = GetDtoOptions(_authContext, request);
 
             var result = _dtoService.GetBaseItemDto(item, dtoOptions, user);
 
@@ -500,7 +498,7 @@ namespace MediaBrowser.Api.UserLibrary
 
             var items = await _libraryManager.GetIntros(item, user).ConfigureAwait(false);
 
-            var dtoOptions = GetDtoOptions(request);
+            var dtoOptions = GetDtoOptions(_authContext, request);
 
             var dtos = items.Select(i => _dtoService.GetBaseItemDto(i, dtoOptions, user))
                 .ToArray();

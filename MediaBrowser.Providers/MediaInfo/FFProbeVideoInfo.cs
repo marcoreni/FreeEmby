@@ -7,7 +7,6 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Localization;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Controller.Providers;
@@ -26,7 +25,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using CommonIO;
+using MediaBrowser.Common.IO;
+using MediaBrowser.Controller.IO;
+using MediaBrowser.Model.IO;
+using MediaBrowser.Model.Globalization;
 
 namespace MediaBrowser.Providers.MediaInfo
 {
@@ -132,23 +134,6 @@ namespace MediaBrowser.Providers.MediaInfo
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            //var idString = item.Id.ToString("N");
-            //var cachePath = Path.Combine(_appPaths.CachePath,
-            //    "ffprobe-video",
-            //    idString.Substring(0, 2), idString, "v" + SchemaVersion + _mediaEncoder.Version + item.DateModified.Ticks.ToString(_usCulture) + ".json");
-
-            try
-            {
-                //return _json.DeserializeFromFile<Model.MediaInfo.MediaInfo>(cachePath);
-            }
-            catch (FileNotFoundException)
-            {
-
-            }
-            catch (DirectoryNotFoundException)
-            {
-            }
-
             var protocol = item.LocationType == LocationType.Remote
                 ? MediaProtocol.Http
                 : MediaProtocol.File;
@@ -218,7 +203,6 @@ namespace MediaBrowser.Providers.MediaInfo
 
             var videoStream = mediaStreams.FirstOrDefault(i => i.Type == MediaStreamType.Video);
 
-            video.VideoBitRate = videoStream == null ? null : videoStream.BitRate;
             video.DefaultVideoStreamIndex = videoStream == null ? (int?)null : videoStream.Index;
 
             video.HasSubtitles = mediaStreams.Any(i => i.Type == MediaStreamType.Subtitle);
@@ -344,6 +328,11 @@ namespace MediaBrowser.Providers.MediaInfo
         /// <returns>VideoStream.</returns>
         private BlurayDiscInfo GetBDInfo(string path)
         {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentNullException("path");
+            }
+
             try
             {
                 return _blurayExaminer.GetDiscInfo(path);
@@ -428,7 +417,7 @@ namespace MediaBrowser.Providers.MediaInfo
             }
             if (!string.IsNullOrWhiteSpace(data.Name))
             {
-                if (string.IsNullOrWhiteSpace(video.Name) || string.Equals(video.Name, Path.GetFileNameWithoutExtension(video.Path), StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrWhiteSpace(video.Name) || (string.Equals(video.Name, Path.GetFileNameWithoutExtension(video.Path), StringComparison.OrdinalIgnoreCase) && !video.ProviderIds.Any()))
                 {
                     // Don't use the embedded name for extras because it will often be the same name as the movie
                     if (!video.ExtraType.HasValue && !video.IsOwnedItem)
@@ -605,7 +594,7 @@ namespace MediaBrowser.Providers.MediaInfo
         private void FetchFromDvdLib(Video item, IIsoMount mount)
         {
             var path = mount == null ? item.Path : mount.MountedPath;
-            var dvd = new Dvd(path);
+            var dvd = new Dvd(path, _fileSystem);
 
             var primaryTitle = dvd.Titles.OrderByDescending(GetRuntime).FirstOrDefault();
 
@@ -653,7 +642,7 @@ namespace MediaBrowser.Providers.MediaInfo
         /// <returns>System.Nullable{IsoType}.</returns>
         private IsoType? DetermineIsoType(IIsoMount isoMount)
         {
-            var fileSystemEntries = Directory.EnumerateFileSystemEntries(isoMount.MountedPath).Select(Path.GetFileName).ToList();
+            var fileSystemEntries = _fileSystem.GetFileSystemEntryPaths(isoMount.MountedPath).Select(Path.GetFileName).ToList();
 
             if (fileSystemEntries.Contains("video_ts", StringComparer.OrdinalIgnoreCase) ||
                 fileSystemEntries.Contains("VIDEO_TS.IFO", StringComparer.OrdinalIgnoreCase))

@@ -1,4 +1,5 @@
 ﻿define(['apphost', 'listViewStyle'], function (appHost) {
+    'use strict';
 
     return function (view, params) {
 
@@ -43,7 +44,7 @@
                 }
             });
 
-            if (Dashboard.isConnectMode()) {
+            if (appHost.supports('multiserver')) {
                 page.querySelector('.selectServer').classList.remove('hide');
             } else {
                 page.querySelector('.selectServer').classList.add('hide');

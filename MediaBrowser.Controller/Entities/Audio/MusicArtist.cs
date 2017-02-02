@@ -6,10 +6,12 @@ using MediaBrowser.Model.Users;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
+using MediaBrowser.Model.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Common.Extensions;
+using MediaBrowser.Controller.Extensions;
+using MediaBrowser.Model.Extensions;
 
 namespace MediaBrowser.Controller.Entities.Audio
 {
@@ -43,6 +45,15 @@ namespace MediaBrowser.Controller.Entities.Audio
         }
 
         [IgnoreDataMember]
+        public override bool IsDisplayedAsFolder
+        {
+            get
+            {
+                return true;
+            }
+        }
+
+        [IgnoreDataMember]
         public override bool SupportsAddingToPlaylist
         {
             get { return true; }
@@ -67,7 +78,7 @@ namespace MediaBrowser.Controller.Entities.Audio
             if (query.IncludeItemTypes.Length == 0)
             {
                 query.IncludeItemTypes = new[] { typeof(Audio).Name, typeof(MusicVideo).Name, typeof(MusicAlbum).Name };
-                query.ArtistNames = new[] { Name };
+                query.ArtistIds = new[] { Id.ToString("N") };
             }
 
             return LibraryManager.GetItemList(query);

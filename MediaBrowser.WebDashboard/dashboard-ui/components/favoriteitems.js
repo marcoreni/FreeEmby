@@ -1,7 +1,8 @@
-﻿define(['libraryBrowser', 'cardBuilder', 'dom', 'apphost', 'scrollStyles', 'emby-itemscontainer'], function (libraryBrowser, cardBuilder, dom, appHost) {
+﻿define(['libraryBrowser', 'cardBuilder', 'dom', 'apphost', 'imageLoader', 'scrollStyles', 'emby-itemscontainer'], function (libraryBrowser, cardBuilder, dom, appHost, imageLoader) {
+    'use strict';
 
     function enableScrollX() {
-        return browserInfo.mobile && AppInfo.enableAppLayouts;
+        return browserInfo.mobile;
     }
 
     function getThumbShape() {
@@ -111,7 +112,7 @@
             }
 
             elem.innerHTML = html;
-            ImageLoader.lazyChildren(elem);
+            imageLoader.lazyChildren(elem);
         });
     }
 

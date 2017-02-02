@@ -1,4 +1,5 @@
 ﻿define(['datetime', 'jQuery', 'dom', 'humanedate', 'cardStyle', 'listViewStyle'], function (datetime, $, dom) {
+    'use strict';
 
     function renderNoHealthAlertsMessage(page) {
 
@@ -216,7 +217,7 @@
 
                     itemHtml += '<div class="listItemBodyText secondary">';
                     var date = datetime.parseISO8601Date(item.Date, true);
-                    itemHtml += date.toLocaleDateString();
+                    itemHtml += datetime.toLocaleDateString(date);
                     itemHtml += '</div>';
 
                     //itemHtml += '<div class="listItemBodyText secondary listItemBodyText-nowrap">';
@@ -749,10 +750,6 @@
 
                 return "<img src='css/images/clients/roku.jpg' />";
             }
-            if (clientLowered == "windows phone") {
-
-                return "<img src='css/images/clients/windowsphone.png' />";
-            }
             if (clientLowered == "dlna") {
 
                 return "<img src='css/images/clients/dlna.png' />";
@@ -1129,7 +1126,7 @@
 
             html += '<div class="listItemBodyText secondary">';
             var date = datetime.parseISO8601Date(entry.Date, true);
-            html += date.toLocaleDateString() + ' ' + date.toLocaleTimeString().toLowerCase();
+            html += datetime.toLocaleString(date).toLowerCase();
             html += '</div>';
 
             html += '<div class="listItemBodyText secondary listItemBodyText-nowrap">';

@@ -1,16 +1,16 @@
 ﻿using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Localization;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
-using ServiceStack;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using MediaBrowser.Model.Globalization;
+using MediaBrowser.Model.Services;
 
 namespace MediaBrowser.Api.UserLibrary
 {
@@ -41,6 +41,7 @@ namespace MediaBrowser.Api.UserLibrary
         private readonly ILocalizationManager _localization;
 
         private readonly IDtoService _dtoService;
+        private readonly IAuthorizationContext _authContext;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ItemsService" /> class.
@@ -49,7 +50,7 @@ namespace MediaBrowser.Api.UserLibrary
         /// <param name="libraryManager">The library manager.</param>
         /// <param name="localization">The localization.</param>
         /// <param name="dtoService">The dto service.</param>
-        public ItemsService(IUserManager userManager, ILibraryManager libraryManager, ILocalizationManager localization, IDtoService dtoService)
+        public ItemsService(IUserManager userManager, ILibraryManager libraryManager, ILocalizationManager localization, IDtoService dtoService, IAuthorizationContext authContext)
         {
             if (userManager == null)
             {
@@ -72,6 +73,7 @@ namespace MediaBrowser.Api.UserLibrary
             _libraryManager = libraryManager;
             _localization = localization;
             _dtoService = dtoService;
+            _authContext = authContext;
         }
 
         /// <summary>
@@ -100,7 +102,7 @@ namespace MediaBrowser.Api.UserLibrary
         {
             var user = !string.IsNullOrWhiteSpace(request.UserId) ? _userManager.GetUserById(request.UserId) : null;
 
-            var dtoOptions = GetDtoOptions(request);
+            var dtoOptions = GetDtoOptions(_authContext, request);
 
             var result = await GetQueryResult(request, dtoOptions, user).ConfigureAwait(false);
 
@@ -228,8 +230,8 @@ namespace MediaBrowser.Api.UserLibrary
                 Tags = request.GetTags(),
                 OfficialRatings = request.GetOfficialRatings(),
                 Genres = request.GetGenres(),
+                ArtistIds = request.GetArtistIds(),
                 GenreIds = request.GetGenreIds(),
-                Studios = request.GetStudios(),
                 StudioIds = request.GetStudioIds(),
                 Person = request.Person,
                 PersonIds = request.GetPersonIds(),
@@ -316,7 +318,11 @@ namespace MediaBrowser.Api.UserLibrary
             // ExcludeLocationTypes
             if (!string.IsNullOrEmpty(request.ExcludeLocationTypes))
             {
-                query.ExcludeLocationTypes = request.ExcludeLocationTypes.Split(',').Select(d => (LocationType)Enum.Parse(typeof(LocationType), d, true)).ToArray();
+                var excludeLocationTypes = request.ExcludeLocationTypes.Split(',').Select(d => (LocationType)Enum.Parse(typeof(LocationType), d, true)).ToArray();
+                if (excludeLocationTypes.Contains(LocationType.Virtual))
+                {
+                    query.IsVirtualItem = false;
+                }
             }
 
             if (!string.IsNullOrEmpty(request.LocationTypes))
@@ -337,18 +343,19 @@ namespace MediaBrowser.Api.UserLibrary
             }
 
             // Artists
-            if (!string.IsNullOrEmpty(request.ArtistIds))
-            {
-                var artistIds = request.ArtistIds.Split(new[] { '|', ',' });
-
-                var artistItems = artistIds.Select(_libraryManager.GetItemById).Where(i => i != null).ToList();
-                query.ArtistNames = artistItems.Select(i => i.Name).ToArray();
-            }
-
-            // Artists
             if (!string.IsNullOrEmpty(request.Artists))
             {
-                query.ArtistNames = request.Artists.Split('|');
+                query.ArtistIds = request.Artists.Split('|').Select(i =>
+                {
+                    try
+                    {
+                        return _libraryManager.GetArtist(i);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }).Where(i => i != null).Select(i => i.Id.ToString("N")).ToArray();
             }
 
             // ExcludeArtistIds
@@ -361,6 +368,22 @@ namespace MediaBrowser.Api.UserLibrary
             if (!string.IsNullOrEmpty(request.Albums))
             {
                 query.AlbumNames = request.Albums.Split('|');
+            }
+
+            // Studios
+            if (!string.IsNullOrEmpty(request.Studios))
+            {
+                query.StudioIds = request.Studios.Split('|').Select(i =>
+                {
+                    try
+                    {
+                        return _libraryManager.GetStudio(i);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }).Where(i => i != null).Select(i => i.Id.ToString("N")).ToArray();
             }
 
             return query;

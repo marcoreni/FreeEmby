@@ -1,4 +1,5 @@
-﻿define(['cardBuilder', 'emby-itemscontainer'], function (cardBuilder) {
+﻿define(['cardBuilder', 'imageLoader', 'emby-itemscontainer'], function (cardBuilder, imageLoader) {
+    'use strict';
 
     return function (view, params, tabContent) {
 
@@ -13,7 +14,6 @@
                 pageData = data[key] = {
                     query: {
                         StartIndex: 0,
-                        EnableFavoriteSorting: true,
                         Limit: LibraryBrowser.getDefaultPageSize(),
                         Fields: "PrimaryImageAspectRatio"
                     }
@@ -67,7 +67,7 @@
 
             var elem = context.querySelector('#items');
             elem.innerHTML = html;
-            ImageLoader.lazyChildren(elem);
+            imageLoader.lazyChildren(elem);
 
             var i, length;
             var elems;

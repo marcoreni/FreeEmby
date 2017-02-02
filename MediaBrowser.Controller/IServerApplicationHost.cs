@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using MediaBrowser.Model.Net;
 
 namespace MediaBrowser.Controller
 {
@@ -21,16 +22,16 @@ namespace MediaBrowser.Controller
         Task<SystemInfo> GetSystemInfo();
 
         /// <summary>
+        /// Gets a value indicating whether this instance is running as service.
+        /// </summary>
+        /// <value><c>true</c> if this instance is running as service; otherwise, <c>false</c>.</value>
+        bool IsRunningAsService { get; }
+
+        /// <summary>
         /// Gets a value indicating whether [supports automatic run at startup].
         /// </summary>
         /// <value><c>true</c> if [supports automatic run at startup]; otherwise, <c>false</c>.</value>
         bool SupportsAutoRunAtStartup { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether [supports library monitor].
-        /// </summary>
-        /// <value><c>true</c> if [supports library monitor]; otherwise, <c>false</c>.</value>
-        bool SupportsLibraryMonitor { get; }
         
         /// <summary>
         /// Gets the HTTP server port.
@@ -66,7 +67,7 @@ namespace MediaBrowser.Controller
         /// Gets the local ip address.
         /// </summary>
         /// <value>The local ip address.</value>
-        Task<List<IPAddress>> GetLocalIpAddresses();
+        Task<List<IpAddressInfo>> GetLocalIpAddresses();
 
         /// <summary>
         /// Gets the local API URL.
@@ -84,9 +85,7 @@ namespace MediaBrowser.Controller
         /// <summary>
         /// Gets the local API URL.
         /// </summary>
-        /// <param name="ipAddress">The ip address.</param>
-        /// <returns>System.String.</returns>
-        string GetLocalApiUrl(IPAddress ipAddress);
+        string GetLocalApiUrl(IpAddressInfo address);
 
         void LaunchUrl(string url);
 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Xml.Serialization;
+using MediaBrowser.Model.Dlna;
 
 namespace MediaBrowser.Model.Dlna
 {
@@ -37,9 +38,6 @@ namespace MediaBrowser.Model.Dlna
 
         [XmlAttribute("enableSubtitlesInManifest")]
         public bool EnableSubtitlesInManifest { get; set; }
-
-        [XmlAttribute("enableSplittingOnNonKeyFrames")]
-        public bool EnableSplittingOnNonKeyFrames { get; set; }
 
         [XmlAttribute("maxAudioChannels")]
         public string MaxAudioChannels { get; set; }

@@ -1,4 +1,5 @@
 define(['browser'], function (browser) {
+    'use strict';
 
     var mainAnimatedPages = document.querySelector('.mainAnimatedPages');
     var allPages = [];
@@ -99,6 +100,15 @@ define(['browser'], function (browser) {
 
                 if (options.type) {
                     view.setAttribute('data-type', options.type);
+                }
+
+                var properties = [];
+                if (options.fullscreen) {
+                    properties.push('fullscreen');
+                }
+
+                if (properties.length) {
+                    view.setAttribute('data-properties', properties.join(','));
                 }
 
                 var animatable = view;

@@ -4,14 +4,22 @@ using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.LiveTv;
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
+using System.Linq;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
+using MediaBrowser.Model.Serialization;
+using MediaBrowser.Model.Extensions;
 
 namespace MediaBrowser.Controller.LiveTv
 {
     public class LiveTvProgram : BaseItem, IHasLookupInfo<LiveTvProgramLookupInfo>, IHasStartDate, IHasProgramAttributes
     {
+        public LiveTvProgram()
+        {
+            IsVirtualItem = true;
+        }
+
         public override List<string> GetUserDataKeys()
         {
             var list = base.GetUserDataKeys();
@@ -234,6 +242,40 @@ namespace MediaBrowser.Controller.LiveTv
             {
                 return false;
             }
+        }
+
+        private LiveTvOptions GetConfiguration()
+        {
+            return ConfigurationManager.GetConfiguration<LiveTvOptions>("livetv");
+        }
+
+        private ListingsProviderInfo GetListingsProviderInfo()
+        {
+            if (string.Equals(ServiceName, "Emby", StringComparison.OrdinalIgnoreCase))
+            {
+                var config = GetConfiguration();
+
+                return config.ListingProviders.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.MoviePrefix));
+            }
+
+            return null;
+        }
+
+        protected override string GetNameForMetadataLookup()
+        {
+            var name = base.GetNameForMetadataLookup();
+
+            var listings = GetListingsProviderInfo();
+
+            if (listings != null)
+            {
+                if (!string.IsNullOrWhiteSpace(listings.MoviePrefix) && name.StartsWith(listings.MoviePrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    name = name.Substring(listings.MoviePrefix.Length).Trim();
+                }
+            }
+
+            return name;
         }
 
         public override List<ExternalUrl> GetRelatedUrls()

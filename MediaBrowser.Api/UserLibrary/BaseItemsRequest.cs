@@ -1,9 +1,9 @@
 ﻿using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
-using ServiceStack;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MediaBrowser.Model.Services;
 
 namespace MediaBrowser.Api.UserLibrary
 {
@@ -392,6 +392,11 @@ namespace MediaBrowser.Api.UserLibrary
         public string[] GetStudios()
         {
             return (Studios ?? string.Empty).Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        public string[] GetArtistIds()
+        {
+            return (ArtistIds ?? string.Empty).Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
         }
 
         public string[] GetStudioIds()

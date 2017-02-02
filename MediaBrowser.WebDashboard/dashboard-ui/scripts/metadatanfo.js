@@ -1,4 +1,5 @@
 ﻿define(['jQuery'], function ($) {
+    'use strict';
 
     var metadataKey = "xbmcmetadata";
 
@@ -61,16 +62,24 @@
     function getTabs() {
         return [
         {
-            href: 'metadata.html',
-            name: Globalize.translate('TabSettings')
+            href: 'library.html',
+            name: Globalize.translate('HeaderLibraries')
         },
          {
+             href: 'librarydisplay.html',
+             name: Globalize.translate('TabDisplay')
+         },
+         {
              href: 'metadataimages.html',
-             name: Globalize.translate('TabServices')
+             name: Globalize.translate('TabMetadata')
          },
          {
              href: 'metadatanfo.html',
              name: Globalize.translate('TabNfoSettings')
+         },
+         {
+             href: 'librarysettings.html',
+             name: Globalize.translate('TabAdvanced')
          }];
     }
 
@@ -80,7 +89,7 @@
 
     }).on('pageshow', "#metadataNfoPage", function () {
 
-        LibraryMenu.setTabs('metadata', 2, getTabs);
+        LibraryMenu.setTabs('metadata', 3, getTabs);
         Dashboard.showLoadingMsg();
 
         var page = this;

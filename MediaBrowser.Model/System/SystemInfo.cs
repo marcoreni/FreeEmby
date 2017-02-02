@@ -17,12 +17,6 @@ namespace MediaBrowser.Model.System
         public string OperatingSystemDisplayName { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether this instance is running as service.
-        /// </summary>
-        /// <value><c>true</c> if this instance is running as service; otherwise, <c>false</c>.</value>
-        public bool IsRunningAsService { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether [supports running as service].
         /// </summary>
         /// <value><c>true</c> if [supports running as service]; otherwise, <c>false</c>.</value>
@@ -47,12 +41,6 @@ namespace MediaBrowser.Model.System
         /// </summary>
         /// <value><c>true</c> if [supports library monitor]; otherwise, <c>false</c>.</value>
         public bool SupportsLibraryMonitor { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this instance is network deployed.
-        /// </summary>
-        /// <value><c>true</c> if this instance is network deployed; otherwise, <c>false</c>.</value>
-        public bool IsNetworkDeployed { get; set; }
 
         /// <summary>
         /// Gets or sets the in progress installations.
