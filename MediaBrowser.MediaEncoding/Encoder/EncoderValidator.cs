@@ -89,7 +89,9 @@ namespace MediaBrowser.MediaEncoding.Encoder
             var found = new List<string>();
             var required = new[]
             {
+                "mpeg2video",
                 "h264_qsv",
+                "hevc_qsv",
                 "mpeg2_qsv",
                 "vc1_qsv"
             };
@@ -134,9 +136,13 @@ namespace MediaBrowser.MediaEncoding.Encoder
                 "libvorbis",
                 "srt",
                 "h264_nvenc",
+                "hevc_nvenc",
                 "h264_qsv",
+                "hevc_qsv",
                 "h264_omx",
+                "hevc_omx",
                 "h264_vaapi",
+                "hevc_vaapi",
                 "ac3"
             };
 

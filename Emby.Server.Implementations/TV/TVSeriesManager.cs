@@ -77,7 +77,7 @@ namespace Emby.Server.Implementations.TV
             // Avoid implicitly captured closure
             var episodes = GetNextUpEpisodes(request, user, items);
 
-            return GetResult(episodes, null, request);
+            return GetResult(episodes, request);
         }
 
         public QueryResult<BaseItem> GetNextUp(NextUpQuery request, List<Folder> parentsFolders)
@@ -128,7 +128,7 @@ namespace Emby.Server.Implementations.TV
             // Avoid implicitly captured closure
             var episodes = GetNextUpEpisodes(request, user, items);
 
-            return GetResult(episodes, null, request);
+            return GetResult(episodes, request);
         }
 
         public IEnumerable<Episode> GetNextUpEpisodes(NextUpQuery request, User user, IEnumerable<string> seriesKeys)
@@ -144,11 +144,18 @@ namespace Emby.Server.Implementations.TV
             // If viewing all next up for all series, remove first episodes
             // But if that returns empty, keep those first episodes (avoid completely empty view)
             var alwaysEnableFirstEpisode = !string.IsNullOrWhiteSpace(request.SeriesId);
+            var anyFound = false;
 
             return allNextUp
                 .Where(i =>
                 {
                     if (alwaysEnableFirstEpisode || i.Item1 != DateTime.MinValue)
+                    {
+                        anyFound = true;
+                        return true;
+                    }
+
+                    if (!anyFound && i.Item1 == DateTime.MinValue)
                     {
                         return true;
                     }
@@ -156,8 +163,7 @@ namespace Emby.Server.Implementations.TV
                     return false;
                 })
                 .Select(i => i.Item2())
-                .Where(i => i != null)
-                .Take(request.Limit ?? int.MaxValue);
+                .Where(i => i != null);
         }
 
         private string GetUniqueSeriesKey(BaseItem series)
@@ -225,24 +231,30 @@ namespace Emby.Server.Implementations.TV
             return new Tuple<DateTime, Func<Episode>>(DateTime.MinValue, getEpisode);
         }
 
-        private QueryResult<BaseItem> GetResult(IEnumerable<BaseItem> items, int? totalRecordLimit, NextUpQuery query)
+        private QueryResult<BaseItem> GetResult(IEnumerable<BaseItem> items, NextUpQuery query)
         {
-            var itemsArray = totalRecordLimit.HasValue ? items.Take(totalRecordLimit.Value).ToArray() : items.ToArray();
-            var totalCount = itemsArray.Length;
+            int totalCount = 0;
 
+            if (query.EnableTotalRecordCount)
+            {
+                var list = items.ToList();
+                totalCount = list.Count;
+                items = list;
+            }
+
+            if (query.StartIndex.HasValue)
+            {
+                items = items.Skip(query.StartIndex.Value);
+            }
             if (query.Limit.HasValue)
             {
-                itemsArray = itemsArray.Skip(query.StartIndex ?? 0).Take(query.Limit.Value).ToArray();
-            }
-            else if (query.StartIndex.HasValue)
-            {
-                itemsArray = itemsArray.Skip(query.StartIndex.Value).ToArray();
+                items = items.Take(query.Limit.Value);
             }
 
             return new QueryResult<BaseItem>
             {
                 TotalRecordCount = totalCount,
-                Items = itemsArray
+                Items = items.ToArray()
             };
         }
     }

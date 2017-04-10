@@ -141,7 +141,7 @@ namespace MediaBrowser.Controller.Entities
         public string ExternalSeriesId { get; set; }
         public string ExternalId { get; set; }
 
-        public string[] AlbumNames { get; set; }
+        public string[] AlbumIds { get; set; }
         public string[] ArtistIds { get; set; }
         public string[] ExcludeArtistIds { get; set; }
         public string AncestorWithPresentationUniqueKey { get; set; }
@@ -172,7 +172,6 @@ namespace MediaBrowser.Controller.Entities
                 case ItemFields.ProductionLocations:
                 case ItemFields.Keywords:
                 case ItemFields.Taglines:
-                case ItemFields.ShortOverview:
                 case ItemFields.CustomRating:
                 case ItemFields.DateCreated:
                 case ItemFields.SortName:
@@ -203,7 +202,7 @@ namespace MediaBrowser.Controller.Entities
             EnableTotalRecordCount = true;
 
             DtoOptions = new DtoOptions();
-            AlbumNames = new string[] { };
+            AlbumIds = new string[] { };
             ArtistIds = new string[] { };
             ExcludeArtistIds = new string[] { };
             ExcludeProviderIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.Events;
 using MediaBrowser.Model.Net;
@@ -127,7 +128,7 @@ namespace Emby.Server.Implementations.Udp
         /// <summary>
         /// The _udp client
         /// </summary>
-        private IUdpSocket _udpClient;
+        private ISocket _udpClient;
         private readonly ISocketFactory _socketFactory;
 
         /// <summary>
@@ -147,7 +148,7 @@ namespace Emby.Server.Implementations.Udp
             {
                 try
                 {
-                    var result = await _udpClient.ReceiveAsync().ConfigureAwait(false);
+                    var result = await _udpClient.ReceiveAsync(CancellationToken.None).ConfigureAwait(false);
 
                     OnMessageReceived(result);
                 }
@@ -203,19 +204,6 @@ namespace Emby.Server.Implementations.Udp
         }
 
         /// <summary>
-        /// Stops this instance.
-        /// </summary>
-        public void Stop()
-        {
-            _isDisposed = true;
-
-            if (_udpClient != null)
-            {
-                _udpClient.Dispose();
-            }
-        }
-
-        /// <summary>
         /// Releases unmanaged and - optionally - managed resources.
         /// </summary>
         /// <param name="dispose"><c>true</c> to release both managed and unmanaged resources; <c>false</c> to release only unmanaged resources.</param>
@@ -223,7 +211,12 @@ namespace Emby.Server.Implementations.Udp
         {
             if (dispose)
             {
-                Stop();
+                _isDisposed = true;
+
+                if (_udpClient != null)
+                {
+                    _udpClient.Dispose();
+                }
             }
         }
 
@@ -246,9 +239,13 @@ namespace Emby.Server.Implementations.Udp
 
             try
             {
-                await _udpClient.SendAsync(bytes, bytes.Length, remoteEndPoint).ConfigureAwait(false);
+                await _udpClient.SendWithLockAsync(bytes, bytes.Length, remoteEndPoint, CancellationToken.None).ConfigureAwait(false);
 
                 _logger.Info("Udp message sent to {0}", remoteEndPoint);
+            }
+            catch (OperationCanceledException)
+            {
+                
             }
             catch (Exception ex)
             {

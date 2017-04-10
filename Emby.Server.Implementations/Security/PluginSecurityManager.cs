@@ -284,8 +284,7 @@ namespace Emby.Server.Implementations.Security
                     { "systemid", _appHost.SystemId }, 
                     { "mb2equiv", mb2Equivalent }, 
                     { "ver", version }, 
-                    { "platform", _appHost.OperatingSystemDisplayName }, 
-                    { "isservice", _appHost.IsRunningAsService.ToString().ToLower() }
+                    { "platform", _appHost.OperatingSystemDisplayName }
                 };
 
                 try
@@ -309,10 +308,12 @@ namespace Emby.Server.Implementations.Security
 
                     if (reg.registered)
                     {
+                        _logger.Info("Registered for feature {0}", feature);
                         LicenseFile.AddRegCheck(feature, reg.expDate);
                     }
                     else
                     {
+                        _logger.Info("Not registered for feature {0}", feature);
                         LicenseFile.RemoveRegCheck(feature);
                     }
 

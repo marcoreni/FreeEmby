@@ -50,8 +50,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     "rottentomatoesid",
                     "language",
                     "tvcomid",
-                    "budget",
-                    "revenue",
                     "tagline",
                     "studio",
                     "genre",
@@ -89,7 +87,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     "awardsummary",
                     "enddate",
                     "lockedfields",
-                    "metascore",
                     "zap2itid",
                     "tvrageid",
                     "gamesdbid",
@@ -183,9 +180,18 @@ namespace MediaBrowser.XbmcMetadata.Savers
         /// <returns><c>true</c> if [is enabled for] [the specified item]; otherwise, <c>false</c>.</returns>
         public abstract bool IsEnabledFor(IHasMetadata item, ItemUpdateType updateType);
 
-        protected virtual List<string> GetTagsUsed()
+        protected virtual List<string> GetTagsUsed(IHasMetadata item)
         {
-            return new List<string>();
+            var list = new List<string>();
+            foreach (var providerKey in item.ProviderIds.Keys)
+            {
+                var providerIdTagName = GetTagForProviderKey(providerKey);
+                if (!CommonTags.ContainsKey(providerIdTagName))
+                {
+                    list.Add(providerIdTagName);
+                }
+            }
+            return list;
         }
 
         public void Save(IHasMetadata item, CancellationToken cancellationToken)
@@ -271,7 +277,7 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     AddMediaInfo(hasMediaSources, writer);
                 }
 
-                var tagsUsed = GetTagsUsed();
+                var tagsUsed = GetTagsUsed(item);
 
                 try
                 {
@@ -457,7 +463,7 @@ namespace MediaBrowser.XbmcMetadata.Savers
 
             if (item is Video)
             {
-                var outline = (item.ShortOverview ?? string.Empty)
+                var outline = (item.Tagline ?? string.Empty)
                     .StripHtml()
                     .Replace("&quot;", "'");
 
@@ -570,14 +576,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                 writer.WriteElementString("website", item.HomePageUrl);
             }
 
-            var rt = item.GetProviderId(MetadataProviders.RottenTomatoes);
-
-            if (!string.IsNullOrEmpty(rt))
-            {
-                writer.WriteElementString("rottentomatoesid", rt);
-                writtenProviderIds.Add(MetadataProviders.RottenTomatoes.ToString());
-            }
-
             var tmdbCollection = item.GetProviderId(MetadataProviders.TmdbCollection);
 
             if (!string.IsNullOrEmpty(tmdbCollection))
@@ -682,26 +680,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
             if (item.VoteCount.HasValue)
             {
                 writer.WriteElementString("votes", item.VoteCount.Value.ToString(UsCulture));
-            }
-
-            var hasBudget = item as IHasBudget;
-            if (hasBudget != null)
-            {
-                if (hasBudget.Budget.HasValue)
-                {
-                    writer.WriteElementString("budget", hasBudget.Budget.Value.ToString(UsCulture));
-                }
-
-                if (hasBudget.Revenue.HasValue)
-                {
-                    writer.WriteElementString("revenue", hasBudget.Revenue.Value.ToString(UsCulture));
-                }
-            }
-
-            var hasMetascore = item as IHasMetascore;
-            if (hasMetascore != null && hasMetascore.Metascore.HasValue)
-            {
-                writer.WriteElementString("metascore", hasMetascore.Metascore.Value.ToString(UsCulture));
             }
 
             // Use original runtime here, actual file runtime later in MediaInfo
@@ -834,7 +812,8 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     var providerId = item.ProviderIds[providerKey];
                     if (!string.IsNullOrEmpty(providerId) && !writtenProviderIds.Contains(providerKey))
                     {
-                        writer.WriteElementString(providerKey.ToLower() + "id", providerId);
+                        writer.WriteElementString(GetTagForProviderKey(providerKey), providerId);
+                        writtenProviderIds.Add(providerKey);
                     }
                 }
             }
@@ -1092,6 +1071,11 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     }
                 }
             }
+        }
+
+        private static string GetTagForProviderKey(string providerKey)
+        {
+            return providerKey.ToLower() + "id";
         }
     }
 }

@@ -788,7 +788,7 @@ namespace MediaBrowser.Controller.Entities
                 query.IsVirtualUnaired,
                 query.IsUnaired);
 
-            if (collapseBoxSetItems)
+            if (collapseBoxSetItems && user != null)
             {
                 items = CollapseBoxSetItemsIfNeeded(items, query, queryParent, user, configurationManager);
             }
@@ -1119,13 +1119,11 @@ namespace MediaBrowser.Controller.Entities
             InternalItemsQuery query,
             ILibraryManager libraryManager, bool enableSorting)
         {
-            var user = query.User;
-
             items = items.DistinctBy(i => i.GetPresentationUniqueKey(), StringComparer.OrdinalIgnoreCase);
 
             if (query.SortBy.Length > 0)
             {
-                items = libraryManager.Sort(items, user, query.SortBy, query.SortOrder);
+                items = libraryManager.Sort(items, query.User, query.SortBy, query.SortOrder);
             }
 
             var itemsArray = totalRecordLimit.HasValue ? items.Take(totalRecordLimit.Value).ToArray() : items.ToArray();
@@ -1719,53 +1717,6 @@ namespace MediaBrowser.Controller.Entities
                 {
                     return false;
                 }
-            }
-
-            // Artists
-            if (query.ArtistIds.Length > 0)
-            {
-                var audio = item as IHasArtist;
-
-                //if (!(audio != null && query.ArtistNames.Any(audio.HasAnyArtist)))
-                //{
-                //    return false;
-                //}
-            }
-
-            // Albums
-            if (query.AlbumNames.Length > 0)
-            {
-                var audio = item as Audio.Audio;
-
-                if (audio != null)
-                {
-                    if (!query.AlbumNames.Any(a => string.Equals(a, audio.Album, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        return false;
-                    }
-                }
-
-                var album = item as MusicAlbum;
-
-                if (album != null)
-                {
-                    if (!query.AlbumNames.Any(a => string.Equals(a, album.Name, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        return false;
-                    }
-                }
-
-                var musicVideo = item as MusicVideo;
-
-                if (musicVideo != null)
-                {
-                    if (!query.AlbumNames.Any(a => string.Equals(a, musicVideo.Album, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        return false;
-                    }
-                }
-
-                return false;
             }
 
             return true;

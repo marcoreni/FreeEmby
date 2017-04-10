@@ -61,7 +61,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Emby.Common.Implementations;
 using Emby.Common.Implementations.Archiving;
-using Emby.Common.Implementations.Networking;
+using Emby.Common.Implementations.IO;
 using Emby.Common.Implementations.Reflection;
 using Emby.Common.Implementations.Serialization;
 using Emby.Common.Implementations.TextEncoding;
@@ -83,7 +83,6 @@ using Emby.Dlna.MediaReceiverRegistrar;
 using Emby.Dlna.Ssdp;
 using Emby.Server.Core;
 using Emby.Server.Implementations.Activity;
-using Emby.Server.Core.Configuration;
 using Emby.Server.Implementations.Devices;
 using Emby.Server.Implementations.FFMpeg;
 using Emby.Server.Core.IO;
@@ -91,12 +90,10 @@ using Emby.Server.Core.Localization;
 using Emby.Server.Implementations.Migrations;
 using Emby.Server.Implementations.Security;
 using Emby.Server.Implementations.Social;
-using Emby.Server.Implementations.Sync;
 using Emby.Server.Implementations.Channels;
 using Emby.Server.Implementations.Collections;
-using Emby.Server.Implementations.Connect;
 using Emby.Server.Implementations.Dto;
-using Emby.Server.Implementations.EntryPoints;
+using Emby.Server.Implementations.IO;
 using Emby.Server.Implementations.FileOrganization;
 using Emby.Server.Implementations.HttpServer;
 using Emby.Server.Implementations.HttpServer.Security;
@@ -110,8 +107,6 @@ using Emby.Server.Implementations.Playlists;
 using Emby.Server.Implementations;
 using Emby.Server.Implementations.ServerManager;
 using Emby.Server.Implementations.Session;
-using Emby.Server.Implementations.Social;
-using Emby.Server.Implementations.Sync;
 using Emby.Server.Implementations.TV;
 using Emby.Server.Implementations.Updates;
 using MediaBrowser.Model.Activity;
@@ -134,6 +129,7 @@ using Emby.Drawing;
 using Emby.Server.Implementations.Migrations;
 using MediaBrowser.Model.Diagnostics;
 using Emby.Common.Implementations.Diagnostics;
+using Emby.Server.Implementations.Configuration;
 
 namespace Emby.Server.Core
 {
@@ -297,6 +293,13 @@ namespace Emby.Server.Core
             ImageEncoder = imageEncoder;
 
             SetBaseExceptionMessage();
+
+            if (environmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows)
+            {
+                fileSystem.AddShortcutHandler(new LnkShortcutHandler());
+            }
+
+            fileSystem.AddShortcutHandler(new MbLinkShortcutHandler(fileSystem));
         }
 
         private Version _version;
@@ -312,7 +315,13 @@ namespace Emby.Server.Core
             }
         }
 
-        public abstract bool SupportsRunningAsService { get; }
+        public virtual bool SupportsRunningAsService
+        {
+            get
+            {
+                return false;
+            }
+        }
 
         /// <summary>
         /// Gets the name.
@@ -326,14 +335,26 @@ namespace Emby.Server.Core
             }
         }
 
-        public abstract bool IsRunningAsService { get; }
+        public virtual bool IsRunningAsService
+        {
+            get
+            {
+                return false;
+            }
+        }
 
         private Assembly GetAssembly(Type type)
         {
             return type.GetTypeInfo().Assembly;
         }
 
-        public abstract bool SupportsAutoRunAtStartup { get; }
+        public virtual bool SupportsAutoRunAtStartup
+        {
+            get
+            {
+                return EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows;
+            }
+        }
 
         private void SetBaseExceptionMessage()
         {
@@ -413,41 +434,41 @@ namespace Emby.Server.Core
 
             var result = new JsonSerializer(FileSystemManager, LogManager.GetLogger("JsonSerializer"));
 
-            ServiceStack.Text.JsConfig<LiveTvProgram>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<LiveTvChannel>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<LiveTvVideoRecording>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<LiveTvAudioRecording>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Series>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Audio>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<MusicAlbum>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<MusicArtist>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<MusicGenre>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<MusicVideo>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Movie>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Playlist>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<AudioPodcast>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<AudioBook>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Trailer>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<BoxSet>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Episode>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Season>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Book>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<CollectionFolder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Folder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Game>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<GameGenre>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<GameSystem>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Genre>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Person>.ExcludePropertyNames = new[] { "PlaceOfBirth", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Photo>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<PhotoAlbum>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Studio>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<UserRootFolder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<UserView>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Video>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Year>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<Channel>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
-            ServiceStack.Text.JsConfig<AggregateFolder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "ShortOverview", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<LiveTvProgram>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<LiveTvChannel>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<LiveTvVideoRecording>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<LiveTvAudioRecording>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Series>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Audio>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<MusicAlbum>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<MusicArtist>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<MusicGenre>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<MusicVideo>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Movie>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Playlist>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<AudioPodcast>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<AudioBook>.ExcludePropertyNames = new[] { "Artists", "AlbumArtists", "ChannelMediaSources", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Trailer>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<BoxSet>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Episode>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Season>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Book>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<CollectionFolder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Folder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Game>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<GameGenre>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<GameSystem>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Genre>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Person>.ExcludePropertyNames = new[] { "PlaceOfBirth", "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Photo>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<PhotoAlbum>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Studio>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<UserRootFolder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<UserView>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Video>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Year>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<Channel>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
+            ServiceStack.Text.JsConfig<AggregateFolder>.ExcludePropertyNames = new[] { "ProviderIds", "ImageInfos", "ProductionLocations", "ThemeSongIds", "ThemeVideoIds", "TotalBitrate", "Taglines", "Keywords", "ExtraType" };
 
             return result;
         }
@@ -507,6 +528,9 @@ namespace Emby.Server.Core
                 }
             }
         }
+
+        protected abstract IConnectManager CreateConnectManager();
+        protected abstract ISyncManager CreateSyncManager();
 
         /// <summary>
         /// Registers resources that classes will depend on
@@ -568,9 +592,6 @@ namespace Emby.Server.Core
             AuthenticationRepository = await GetAuthenticationRepository().ConfigureAwait(false);
             RegisterSingleInstance(AuthenticationRepository);
 
-            SyncRepository = GetSyncRepository();
-            RegisterSingleInstance(SyncRepository);
-
             UserManager = new UserManager(LogManager.GetLogger("UserManager"), ServerConfigurationManager, UserRepository, XmlSerializer, NetworkManager, () => ImageProcessor, () => DtoService, () => ConnectManager, this, JsonSerializer, FileSystemManager, CryptographyProvider, _defaultUserNameFactory());
             RegisterSingleInstance(UserManager);
 
@@ -591,7 +612,7 @@ namespace Emby.Server.Core
             CertificatePath = GetCertificatePath(true);
             Certificate = GetCertificate(CertificatePath);
 
-            HttpServer = HttpServerFactory.CreateServer(this, LogManager, ServerConfigurationManager, NetworkManager, MemoryStreamFactory, "Emby", "web/index.html", textEncoding, SocketFactory, CryptographyProvider, JsonSerializer, XmlSerializer, EnvironmentInfo, Certificate, SupportsDualModeSockets);
+            HttpServer = HttpServerFactory.CreateServer(this, LogManager, ServerConfigurationManager, NetworkManager, MemoryStreamFactory, "Emby", "web/index.html", textEncoding, SocketFactory, CryptographyProvider, JsonSerializer, XmlSerializer, EnvironmentInfo, Certificate, FileSystemManager, SupportsDualModeSockets);
             HttpServer.GlobalResponse = LocalizationManager.GetLocalizedString("StartupEmbyServerIsLoading");
             RegisterSingleInstance(HttpServer, false);
             progress.Report(10);
@@ -608,7 +629,7 @@ namespace Emby.Server.Core
             TVSeriesManager = new TVSeriesManager(UserManager, UserDataManager, LibraryManager, ServerConfigurationManager);
             RegisterSingleInstance(TVSeriesManager);
 
-            SyncManager = new SyncManager(LibraryManager, SyncRepository, ImageProcessor, LogManager.GetLogger("SyncManager"), UserManager, () => DtoService, this, TVSeriesManager, () => MediaEncoder, FileSystemManager, () => SubtitleEncoder, ServerConfigurationManager, UserDataManager, () => MediaSourceManager, JsonSerializer, TaskManager, MemoryStreamFactory);
+            SyncManager = CreateSyncManager();
             RegisterSingleInstance(SyncManager);
 
             DtoService = new DtoService(LogManager.GetLogger("DtoService"), LibraryManager, UserDataManager, ItemRepository, ImageProcessor, ServerConfigurationManager, FileSystemManager, ProviderManager, () => ChannelManager, SyncManager, this, () => DeviceManager, () => MediaSourceManager, () => LiveTvManager);
@@ -617,7 +638,7 @@ namespace Emby.Server.Core
             var encryptionManager = new EncryptionManager();
             RegisterSingleInstance<IEncryptionManager>(encryptionManager);
 
-            ConnectManager = new ConnectManager(LogManager.GetLogger("ConnectManager"), ApplicationPaths, JsonSerializer, encryptionManager, HttpClient, this, ServerConfigurationManager, UserManager, ProviderManager, SecurityManager, FileSystemManager);
+            ConnectManager = CreateConnectManager();
             RegisterSingleInstance(ConnectManager);
 
             DeviceManager = new DeviceManager(new DeviceRepository(ApplicationPaths, JsonSerializer, LogManager.GetLogger("DeviceManager"), FileSystemManager), UserManager, FileSystemManager, LibraryMonitor, ServerConfigurationManager, LogManager.GetLogger("DeviceManager"), NetworkManager);
@@ -716,7 +737,13 @@ namespace Emby.Server.Core
             await ((UserManager)UserManager).Initialize().ConfigureAwait(false);
         }
 
-        protected abstract bool SupportsDualModeSockets { get; }
+        protected virtual bool SupportsDualModeSockets
+        {
+            get
+            {
+                return true;
+            }
+        }
 
         private ICertificate GetCertificate(string certificateLocation)
         {
@@ -761,7 +788,99 @@ namespace Emby.Server.Core
             return new ImageProcessor(LogManager.GetLogger("ImageProcessor"), ServerConfigurationManager.ApplicationPaths, FileSystemManager, JsonSerializer, ImageEncoder, maxConcurrentImageProcesses, () => LibraryManager, TimerFactory);
         }
 
-        protected abstract FFMpegInstallInfo GetFfmpegInstallInfo();
+        protected virtual FFMpegInstallInfo GetFfmpegInstallInfo()
+        {
+            var info = new FFMpegInstallInfo();
+
+            // Windows builds: http://ffmpeg.zeranoe.com/builds/
+            // Linux builds: http://johnvansickle.com/ffmpeg/
+            // OS X builds: http://ffmpegmac.net/
+            // OS X x64: http://www.evermeet.cx/ffmpeg/
+
+            if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Linux)
+            {
+                info.FFMpegFilename = "ffmpeg";
+                info.FFProbeFilename = "ffprobe";
+                info.ArchiveType = "7z";
+                info.Version = "20170308";
+                info.DownloadUrls = GetLinuxDownloadUrls();
+            }
+            else if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.Windows)
+            {
+                info.FFMpegFilename = "ffmpeg.exe";
+                info.FFProbeFilename = "ffprobe.exe";
+                info.Version = "20170308";
+                info.ArchiveType = "7z";
+                info.DownloadUrls = GetWindowsDownloadUrls();
+            }
+            else if (EnvironmentInfo.OperatingSystem == MediaBrowser.Model.System.OperatingSystem.OSX)
+            {
+                info.FFMpegFilename = "ffmpeg";
+                info.FFProbeFilename = "ffprobe";
+                info.ArchiveType = "7z";
+                info.Version = "20170308";
+                info.DownloadUrls = GetMacDownloadUrls();
+            }
+            else
+            {
+                // No version available - user requirement
+                info.DownloadUrls = new string[] { };
+            }
+
+            return info;
+        }
+
+        private string[] GetMacDownloadUrls()
+        {
+            switch (EnvironmentInfo.SystemArchitecture)
+            {
+                case Architecture.X64:
+                    return new[]
+                    {
+                                "https://embydata.com/downloads/ffmpeg/osx/ffmpeg-x64-20170308.7z"
+                    };
+            }
+
+            return new string[] { };
+        }
+
+        private string[] GetWindowsDownloadUrls()
+        {
+            switch (EnvironmentInfo.SystemArchitecture)
+            {
+                case Architecture.X64:
+                    return new[]
+                    {
+                                "https://embydata.com/downloads/ffmpeg/windows/ffmpeg-20170308-win64.7z"
+                    };
+                case Architecture.X86:
+                    return new[]
+                    {
+                                "https://embydata.com/downloads/ffmpeg/windows/ffmpeg-20170308-win32.7z"
+                    };
+            }
+
+            return new string[] { };
+        }
+
+        private string[] GetLinuxDownloadUrls()
+        {
+            switch (EnvironmentInfo.SystemArchitecture)
+            {
+                case Architecture.X64:
+                    return new[]
+                    {
+                                "https://embydata.com/downloads/ffmpeg/linux/ffmpeg-git-20170301-64bit-static.7z"
+                    };
+                case Architecture.X86:
+                    return new[]
+                    {
+                                "https://embydata.com/downloads/ffmpeg/linux/ffmpeg-git-20170301-32bit-static.7z"
+                    };
+            }
+
+            return new string[] { };
+        }
 
         /// <summary>
         /// Registers the media encoder.
@@ -849,21 +968,12 @@ namespace Emby.Server.Core
             return repo;
         }
 
-        private ISyncRepository GetSyncRepository()
-        {
-            var repo = new SyncRepository(LogManager.GetLogger("SyncRepository"), JsonSerializer, ServerConfigurationManager.ApplicationPaths);
-
-            repo.Initialize();
-
-            return repo;
-        }
-
         /// <summary>
         /// Configures the repositories.
         /// </summary>
         private void ConfigureNotificationsRepository()
         {
-            var repo = new SqliteNotificationsRepository(LogManager.GetLogger("SqliteNotificationsRepository"), ServerConfigurationManager.ApplicationPaths);
+            var repo = new SqliteNotificationsRepository(LogManager.GetLogger("SqliteNotificationsRepository"), ServerConfigurationManager.ApplicationPaths, FileSystemManager);
 
             repo.Initialize();
 
@@ -1158,7 +1268,7 @@ namespace Emby.Server.Core
             list.Add(GetAssembly(typeof(InstallationManager)));
 
             // Emby.Server.Core
-            list.Add(GetAssembly(typeof(ServerApplicationPaths)));
+            list.Add(GetAssembly(typeof(ApplicationHost)));
 
             // MediaEncoding
             list.Add(GetAssembly(typeof(MediaEncoder)));
@@ -1489,7 +1599,10 @@ namespace Emby.Server.Core
             }
         }
 
-        protected abstract void AuthorizeServer();
+        protected virtual void AuthorizeServer()
+        {
+            throw new NotImplementedException();
+        }
 
         public event EventHandler HasUpdateAvailableChanged;
 
@@ -1565,7 +1678,10 @@ namespace Emby.Server.Core
             }
         }
 
-        protected abstract void ConfigureAutoRunInternal(bool autorun);
+        protected virtual void ConfigureAutoRunInternal(bool autorun)
+        {
+            throw new NotImplementedException();
+        }
 
         /// <summary>
         /// This returns localhost in the case of no external dns, and the hostname if the 
@@ -1626,12 +1742,9 @@ namespace Emby.Server.Core
             ((IProcess)sender).Dispose();
         }
 
-        public void EnableLoopback(string appName)
+        public virtual void EnableLoopback(string appName)
         {
-            EnableLoopbackInternal(appName);
         }
-
-        protected abstract void EnableLoopbackInternal(string appName);
 
         private void RegisterModules()
         {

@@ -37,7 +37,7 @@ namespace MediaBrowser.Api.Playback.Hls
         /// <returns>System.String.</returns>
         protected override string GetAudioArguments(StreamState state)
         {
-            var codec = GetAudioEncoder(state);
+            var codec = EncodingHelper.GetAudioEncoder(state);
 
             if (string.Equals(codec, "copy", StringComparison.OrdinalIgnoreCase))
             {
@@ -60,7 +60,7 @@ namespace MediaBrowser.Api.Playback.Hls
                 args += " -ab " + bitrate.Value.ToString(UsCulture);
             }
 
-            args += " " + GetAudioFilterParam(state, true);
+            args += " " + EncodingHelper.GetAudioFilterParam(state, ApiEntryPoint.Instance.GetEncodingOptions(), true);
 
             return args;
         }
@@ -72,7 +72,7 @@ namespace MediaBrowser.Api.Playback.Hls
         /// <returns>System.String.</returns>
         protected override string GetVideoArguments(StreamState state)
         {
-            var codec = GetVideoEncoder(state);
+            var codec = EncodingHelper.GetVideoEncoder(state, ApiEntryPoint.Instance.GetEncodingOptions());
 
             var args = "-codec:v:0 " + codec;
 
@@ -85,7 +85,7 @@ namespace MediaBrowser.Api.Playback.Hls
             if (codec.Equals("copy", StringComparison.OrdinalIgnoreCase))
             {
                 // if h264_mp4toannexb is ever added, do not use it for live tv
-                if (state.VideoStream != null && IsH264(state.VideoStream) && !string.Equals(state.VideoStream.NalLengthSize, "0", StringComparison.OrdinalIgnoreCase))
+                if (state.VideoStream != null && EncodingHelper.IsH264(state.VideoStream) && !string.Equals(state.VideoStream.NalLengthSize, "0", StringComparison.OrdinalIgnoreCase))
                 {
                     args += " -bsf:v h264_mp4toannexb";
                 }
@@ -96,35 +96,26 @@ namespace MediaBrowser.Api.Playback.Hls
             var keyFrameArg = string.Format(" -force_key_frames \"expr:gte(t,n_forced*{0})\"",
                 state.SegmentLength.ToString(UsCulture));
 
-            var hasGraphicalSubs = state.SubtitleStream != null && !state.SubtitleStream.IsTextSubtitleStream && state.VideoRequest.SubtitleMethod == SubtitleDeliveryMethod.Encode;
+            var hasGraphicalSubs = state.SubtitleStream != null && !state.SubtitleStream.IsTextSubtitleStream && state.SubtitleDeliveryMethod == SubtitleDeliveryMethod.Encode;
 
-            args += " " + GetVideoQualityParam(state, GetH264Encoder(state)) + keyFrameArg;
+            var encodingOptions = ApiEntryPoint.Instance.GetEncodingOptions();
+            args += " " + EncodingHelper.GetVideoQualityParam(state, codec, encodingOptions, GetDefaultH264Preset()) + keyFrameArg;
 
             // Add resolution params, if specified
             if (!hasGraphicalSubs)
             {
-                args += GetOutputSizeParam(state, codec);
+                args += EncodingHelper.GetOutputSizeParam(state, codec);
             }
 
             // This is for internal graphical subs
             if (hasGraphicalSubs)
             {
-                args += GetGraphicalSubtitleParam(state, codec);
+                args += EncodingHelper.GetGraphicalSubtitleParam(state, codec);
             }
 
             args += " -flags -global_header";
 
             return args;
-        }
-
-        /// <summary>
-        /// Gets the segment file extension.
-        /// </summary>
-        /// <param name="state">The state.</param>
-        /// <returns>System.String.</returns>
-        protected override string GetSegmentFileExtension(StreamState state)
-        {
-            return ".ts";
         }
 
         public VideoHlsService(IServerConfigurationManager serverConfig, IUserManager userManager, ILibraryManager libraryManager, IIsoManager isoManager, IMediaEncoder mediaEncoder, IFileSystem fileSystem, IDlnaManager dlnaManager, ISubtitleEncoder subtitleEncoder, IDeviceManager deviceManager, IMediaSourceManager mediaSourceManager, IZipClient zipClient, IJsonSerializer jsonSerializer, IAuthorizationContext authorizationContext) : base(serverConfig, userManager, libraryManager, isoManager, mediaEncoder, fileSystem, dlnaManager, subtitleEncoder, deviceManager, mediaSourceManager, zipClient, jsonSerializer, authorizationContext)

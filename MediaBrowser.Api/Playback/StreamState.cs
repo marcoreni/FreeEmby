@@ -13,25 +13,34 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using MediaBrowser.Controller.MediaEncoding;
 
 namespace MediaBrowser.Api.Playback
 {
-    public class StreamState : IDisposable
+    public class StreamState : EncodingJobInfo, IDisposable
     {
         private readonly ILogger _logger;
         private readonly IMediaSourceManager _mediaSourceManager;
 
         public string RequestedUrl { get; set; }
 
-        public StreamRequest Request { get; set; }
+        public StreamRequest Request
+        {
+            get { return (StreamRequest)BaseRequest; }
+            set
+            {
+                BaseRequest = value;
+
+                IsVideoRequest = VideoRequest != null;
+            }
+        }
+
         public TranscodingThrottler TranscodingThrottler { get; set; }
 
         public VideoStreamRequest VideoRequest
         {
             get { return Request as VideoStreamRequest; }
         }
-
-        public Dictionary<string, string> RemoteHttpHeaders { get; set; }
 
         /// <summary>
         /// Gets or sets the log file stream.
@@ -40,40 +49,22 @@ namespace MediaBrowser.Api.Playback
         public Stream LogFileStream { get; set; }
         public IDirectStreamProvider DirectStreamProvider { get; set; }
 
-        public string InputContainer { get; set; }
-
-        public MediaSourceInfo MediaSource { get; set; }
-
-        public MediaStream AudioStream { get; set; }
-        public MediaStream VideoStream { get; set; }
-        public MediaStream SubtitleStream { get; set; }
-
-        /// <summary>
-        /// Gets or sets the iso mount.
-        /// </summary>
-        /// <value>The iso mount.</value>
-        public IIsoMount IsoMount { get; set; }
-
-        public string MediaPath { get; set; }
         public string WaitForPath { get; set; }
-
-        public MediaProtocol InputProtocol { get; set; }
 
         public bool IsOutputVideo
         {
             get { return Request is VideoStreamRequest; }
         }
-        public bool IsInputVideo { get; set; }
-
-        public VideoType VideoType { get; set; }
-        public IsoType? IsoType { get; set; }
-
-        public List<string> PlayableStreamFileNames { get; set; }
 
         public int SegmentLength
         {
             get
             {
+                if (Request.SegmentLength.HasValue)
+                {
+                    return Request.SegmentLength.Value;
+                }
+
                 if (string.Equals(OutputVideoCodec, "copy", StringComparison.OrdinalIgnoreCase))
                 {
                     var userAgent = UserAgent ?? string.Empty;
@@ -100,6 +91,19 @@ namespace MediaBrowser.Api.Playback
             }
         }
 
+        public int MinSegments
+        {
+            get
+            {
+                if (Request.MinSegments.HasValue)
+                {
+                    return Request.MinSegments.Value;
+                }
+
+                return SegmentLength >= 10 ? 2 : 3;
+            }
+        }
+
         public bool IsSegmentedLiveStream
         {
             get
@@ -116,43 +120,20 @@ namespace MediaBrowser.Api.Playback
             }
         }
 
-        public long? RunTimeTicks;
-
-        public long? InputBitrate { get; set; }
-        public long? InputFileSize { get; set; }
-
-        public string OutputAudioSync = "1";
-        public string OutputVideoSync = "-1";
-
-        public List<string> SupportedAudioCodecs { get; set; }
-        public List<string> SupportedVideoCodecs { get; set; }
         public string UserAgent { get; set; }
         public TranscodingJobType TranscodingType { get; set; }
 
-        public StreamState(IMediaSourceManager mediaSourceManager, ILogger logger, TranscodingJobType transcodingType)
+        public StreamState(IMediaSourceManager mediaSourceManager, ILogger logger, TranscodingJobType transcodingType) 
+            : base(logger)
         {
             _mediaSourceManager = mediaSourceManager;
             _logger = logger;
-            SupportedAudioCodecs = new List<string>();
-            SupportedVideoCodecs = new List<string>();
-            PlayableStreamFileNames = new List<string>();
-            RemoteHttpHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             TranscodingType = transcodingType;
         }
-
-        public string InputAudioSync { get; set; }
-        public string InputVideoSync { get; set; }
-
-        public bool DeInterlace { get; set; }
-
-        public bool ReadInputAtNativeFramerate { get; set; }
-
-        public TransportStreamTimestamp InputTimestamp { get; set; }
 
         public string MimeType { get; set; }
 
         public bool EstimateContentLength { get; set; }
-        public bool EnableMpegtsM2TsMode { get; set; }
         public TranscodeSeekInfo TranscodeSeekInfo { get; set; }
 
         public long? EncodingDurationTicks { get; set; }
@@ -173,6 +154,8 @@ namespace MediaBrowser.Api.Playback
             DisposeLiveStream();
             DisposeLogStream();
             DisposeIsoMount();
+
+            TranscodingJob = null;
         }
 
         private void DisposeLogStream()
@@ -209,23 +192,6 @@ namespace MediaBrowser.Api.Playback
             }
         }
 
-        private void DisposeIsoMount()
-        {
-            if (IsoMount != null)
-            {
-                try
-                {
-                    IsoMount.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    _logger.ErrorException("Error disposing iso mount", ex);
-                }
-
-                IsoMount = null;
-            }
-        }
-
         private async void DisposeLiveStream()
         {
             if (MediaSource.RequiresClosing && string.IsNullOrWhiteSpace(Request.LiveStreamId) && !string.IsNullOrWhiteSpace(MediaSource.LiveStreamId))
@@ -241,15 +207,7 @@ namespace MediaBrowser.Api.Playback
             }
         }
 
-        public int InternalSubtitleStreamOffset { get; set; }
-
         public string OutputFilePath { get; set; }
-        public string OutputVideoCodec { get; set; }
-        public string OutputAudioCodec { get; set; }
-        public int? OutputAudioChannels;
-        public int? OutputAudioSampleRate;
-        public int? OutputAudioBitrate;
-        public int? OutputVideoBitrate;
 
         public string ActualOutputVideoCodec
         {
@@ -294,8 +252,6 @@ namespace MediaBrowser.Api.Playback
                 return codec;
             }
         }
-
-        public string OutputContainer { get; set; }
 
         public DeviceProfile DeviceProfile { get; set; }
 
@@ -444,20 +400,6 @@ namespace MediaBrowser.Api.Playback
             }
         }
 
-        /// <summary>
-        /// Predicts the audio sample rate that will be in the output stream
-        /// </summary>
-        public double? TargetVideoLevel
-        {
-            get
-            {
-                var stream = VideoStream;
-                return !string.IsNullOrEmpty(VideoRequest.Level) && !Request.Static
-                    ? double.Parse(VideoRequest.Level, CultureInfo.InvariantCulture)
-                    : stream == null ? null : stream.Level;
-            }
-        }
-
         public TransportStreamTimestamp TargetTimestamp
         {
             get
@@ -535,6 +477,12 @@ namespace MediaBrowser.Api.Playback
 
                 return true;
             }
+        }
+
+        public TranscodingJob TranscodingJob;
+        public override void ReportTranscodingProgress(TimeSpan? transcodingPosition, float? framerate, double? percentComplete, long? bytesTranscoded, int? bitRate)
+        {
+            ApiEntryPoint.Instance.ReportTranscodingProgress(TranscodingJob, this, transcodingPosition, framerate, percentComplete, bytesTranscoded, bitRate);
         }
     }
 }

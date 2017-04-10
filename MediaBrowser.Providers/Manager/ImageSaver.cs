@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Controller.IO;
 using MediaBrowser.Model.IO;
 
 namespace MediaBrowser.Providers.Manager
@@ -173,18 +172,11 @@ namespace MediaBrowser.Providers.Manager
 
                 try
                 {
-                    var currentFile = _fileSystem.GetFileInfo(currentPath);
-
-                    // This will fail if the file is hidden
-                    if (currentFile.Exists)
-                    {
-                        if (currentFile.IsHidden)
-                        {
-                            _fileSystem.SetHidden(currentFile.FullName, false);
-                        }
-
-                        _fileSystem.DeleteFile(currentFile.FullName);
-                    }
+                    _fileSystem.DeleteFile(currentPath);
+                }
+                catch (FileNotFoundException)
+                {
+                    
                 }
                 finally
                 {
@@ -234,6 +226,7 @@ namespace MediaBrowser.Providers.Manager
             return retryPath;
         }
 
+        private SemaphoreSlim _imageSaveSemaphore = new SemaphoreSlim(1, 1);
         /// <summary>
         /// Saves the image to location.
         /// </summary>
@@ -247,11 +240,13 @@ namespace MediaBrowser.Providers.Manager
 
             var parentFolder = Path.GetDirectoryName(path);
 
-            _libraryMonitor.ReportFileSystemChangeBeginning(path);
-            _libraryMonitor.ReportFileSystemChangeBeginning(parentFolder);
+            await _imageSaveSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
+                _libraryMonitor.ReportFileSystemChangeBeginning(path);
+                _libraryMonitor.ReportFileSystemChangeBeginning(parentFolder);
+
                 _fileSystem.CreateDirectory(Path.GetDirectoryName(path));
 
                 // If the file is currently hidden we'll have to remove that or the save will fail
@@ -283,6 +278,8 @@ namespace MediaBrowser.Providers.Manager
             }
             finally
             {
+                _imageSaveSemaphore.Release();
+
                 _libraryMonitor.ReportFileSystemChangeComplete(path, false);
                 _libraryMonitor.ReportFileSystemChangeComplete(parentFolder, false);
             }
@@ -406,6 +403,7 @@ namespace MediaBrowser.Providers.Manager
             var folderName = item is MusicAlbum ||
                 item is MusicArtist ||
                 item is PhotoAlbum ||
+                item is Person ||
                 (saveLocally && _config.Configuration.ImageSavingConvention == ImageSavingConvention.Legacy) ?
                 "folder" :
                 "poster";

@@ -38,6 +38,14 @@ namespace MediaBrowser.Controller.Entities
             return GetItemLookupInfo<PersonLookupInfo>();
         }
 
+        public override double? GetDefaultPrimaryImageAspectRatio()
+        {
+            double value = 2;
+            value /= 3;
+
+            return value;
+        }
+
         public IEnumerable<BaseItem> GetTaggedItems(InternalItemsQuery query)
         {
             query.PersonIds = new[] { Id.ToString("N") };
@@ -125,7 +133,12 @@ namespace MediaBrowser.Controller.Entities
             }
         }
 
-        public static string GetPath(string name, bool normalizeName = true)
+        public static string GetPath(string name)
+        {
+            return GetPath(name, true);
+        }
+
+        public static string GetPath(string name, bool normalizeName)
         {
             // Trim the period at the end because windows will have a hard time with that
             var validFilename = normalizeName ?

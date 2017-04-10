@@ -13,10 +13,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using Emby.Server.Implementations.HttpServer;
+using Emby.Server.Implementations.Services;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Services;
-using ServiceStack;
-using ServiceStack.Host;
 using IRequest = MediaBrowser.Model.Services.IRequest;
 using MimeTypes = MediaBrowser.Model.Net.MimeTypes;
 using StreamWriter = Emby.Server.Implementations.HttpServer.StreamWriter;
@@ -203,7 +202,11 @@ namespace Emby.Server.Implementations.HttpServer
             // Do not use the memoryStreamFactory here, they don't place nice with compression
             using (var ms = new MemoryStream())
             {
-                ContentTypes.Instance.SerializeToStream(request, dto, ms);
+                var contentType = request.ResponseContentType;
+                var writerFn = RequestHelper.GetResponseWriter(HttpListenerHost.Instance, contentType);
+
+                writerFn(dto, ms);
+
                 ms.Position = 0;
 
                 var responseHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -471,10 +474,6 @@ namespace Emby.Server.Implementations.HttpServer
             {
                 throw new ArgumentNullException("cacheKey");
             }
-            if (options.ContentFactory == null)
-            {
-                throw new ArgumentNullException("factoryFn");
-            }
 
             var key = cacheKey.ToString("N");
 
@@ -557,30 +556,44 @@ namespace Emby.Server.Implementations.HttpServer
             {
                 var rangeHeader = requestContext.Headers.Get("Range");
 
-                var stream = await factoryFn().ConfigureAwait(false);
+                if (!isHeadRequest && !string.IsNullOrWhiteSpace(options.Path))
+                {
+                    return new FileWriter(options.Path, contentType, rangeHeader, _logger, _fileSystem)
+                    {
+                        OnComplete = options.OnComplete,
+                        OnError = options.OnError,
+                        FileShare = options.FileShare
+                    };
+                }
 
                 if (!string.IsNullOrEmpty(rangeHeader))
                 {
+                    var stream = await factoryFn().ConfigureAwait(false);
+
                     return new RangeRequestWriter(rangeHeader, stream, contentType, isHeadRequest, _logger)
                     {
                         OnComplete = options.OnComplete
                     };
                 }
-
-                responseHeaders["Content-Length"] = stream.Length.ToString(UsCulture);
-
-                if (isHeadRequest)
+                else
                 {
-                    stream.Dispose();
+                    var stream = await factoryFn().ConfigureAwait(false);
 
-                    return GetHttpResult(new byte[] { }, contentType, true);
+                    responseHeaders["Content-Length"] = stream.Length.ToString(UsCulture);
+
+                    if (isHeadRequest)
+                    {
+                        stream.Dispose();
+
+                        return GetHttpResult(new byte[] { }, contentType, true);
+                    }
+
+                    return new StreamWriter(stream, contentType, _logger)
+                    {
+                        OnComplete = options.OnComplete,
+                        OnError = options.OnError
+                    };
                 }
-
-                return new StreamWriter(stream, contentType, _logger)
-                {
-                    OnComplete = options.OnComplete,
-                    OnError = options.OnError
-                };
             }
 
             using (var stream = await factoryFn().ConfigureAwait(false))

@@ -166,7 +166,11 @@ namespace Emby.Server.Core.IO
         private void Restart()
         {
             Stop();
-            Start();
+
+            if (!_disposed)
+            {
+                Start();
+            }
         }
 
         private bool IsLibraryMonitorEnabaled(BaseItem item)
@@ -283,18 +287,24 @@ namespace Emby.Server.Core.IO
         /// <param name="path">The path.</param>
         private void StartWatchingPath(string path)
         {
+            if (!_fileSystem.DirectoryExists(path))
+            {
+                // Seeing a crash in the mono runtime due to an exception being thrown on a different thread
+                Logger.Info("Skipping realtime monitor for {0} because the path does not exist", path);
+                return;
+            }
+
+            // Already being watched
+            if (_fileSystemWatchers.ContainsKey(path))
+            {
+                return;
+            }
+
             // Creating a FileSystemWatcher over the LAN can take hundreds of milliseconds, so wrap it in a Task to do them all in parallel
             Task.Run(() =>
             {
                 try
                 {
-                    if (!_fileSystem.DirectoryExists(path))
-                    {
-                        // Seeing a crash in the mono runtime due to an exception being thrown on a different thread
-                        Logger.Info("Skipping realtime monitor for {0} because the path does not exist", path);
-                        return;
-                    }
-
                     var newWatcher = new FileSystemWatcher(path, "*")
                     {
                         IncludeSubdirectories = true
@@ -326,7 +336,6 @@ namespace Emby.Server.Core.IO
                     }
                     else
                     {
-                        Logger.Info("Unable to add directory watcher for {0}. It already exists in the dictionary.", path);
                         newWatcher.Dispose();
                     }
 
@@ -412,20 +421,9 @@ namespace Emby.Server.Core.IO
         {
             try
             {
-                Logger.Debug("Changed detected of type " + e.ChangeType + " to " + e.FullPath);
+                //Logger.Debug("Changed detected of type " + e.ChangeType + " to " + e.FullPath);
 
                 var path = e.FullPath;
-
-                // For deletes, use the parent path
-                if (e.ChangeType == WatcherChangeTypes.Deleted)
-                {
-                    var parentPath = Path.GetDirectoryName(path);
-
-                    if (!string.IsNullOrWhiteSpace(parentPath))
-                    {
-                        path = parentPath;
-                    }
-                }
 
                 ReportFileSystemChanged(path);
             }
@@ -595,11 +593,13 @@ namespace Emby.Server.Core.IO
             }
         }
 
+        private bool _disposed;
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
         /// </summary>
         public void Dispose()
         {
+            _disposed = true;
             Dispose(true);
             GC.SuppressFinalize(this);
         }

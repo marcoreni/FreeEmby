@@ -17,7 +17,7 @@ namespace MediaBrowser.Controller.Entities.Movies
     /// <summary>
     /// Class Movie
     /// </summary>
-    public class Movie : Video, IHasSpecialFeatures, IHasBudget, IHasTrailers, IHasAwards, IHasMetascore, IHasLookupInfo<MovieInfo>, ISupportsBoxSetGrouping
+    public class Movie : Video, IHasSpecialFeatures, IHasTrailers, IHasAwards, IHasLookupInfo<MovieInfo>, ISupportsBoxSetGrouping
     {
         public List<Guid> SpecialFeatureIds { get; set; }
 
@@ -46,18 +46,6 @@ namespace MediaBrowser.Controller.Entities.Movies
         public List<string> Taglines { get; set; }
 
         /// <summary>
-        /// Gets or sets the budget.
-        /// </summary>
-        /// <value>The budget.</value>
-        public double? Budget { get; set; }
-
-        /// <summary>
-        /// Gets or sets the revenue.
-        /// </summary>
-        /// <value>The revenue.</value>
-        public double? Revenue { get; set; }
-
-        /// <summary>
         /// Gets or sets the name of the TMDB collection.
         /// </summary>
         /// <value>The name of the TMDB collection.</value>
@@ -68,6 +56,14 @@ namespace MediaBrowser.Controller.Entities.Movies
         {
             get { return TmdbCollectionName; }
             set { TmdbCollectionName = value; }
+        }
+
+        public override double? GetDefaultPrimaryImageAspectRatio()
+        {
+            double value = 2;
+            value /= 3;
+
+            return value;
         }
 
         [IgnoreDataMember]

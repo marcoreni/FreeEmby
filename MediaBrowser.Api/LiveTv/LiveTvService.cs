@@ -582,13 +582,13 @@ namespace MediaBrowser.Api.LiveTv
     }
 
     [Route("/LiveTv/ListingProviders/Default", "GET")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
+    [Authenticated]
     public class GetDefaultListingProvider : ListingsProviderInfo, IReturn<ListingsProviderInfo>
     {
     }
 
     [Route("/LiveTv/ListingProviders", "POST", Summary = "Adds a listing provider")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
+    [Authenticated]
     public class AddListingProvider : ListingsProviderInfo, IReturn<ListingsProviderInfo>
     {
         public bool ValidateLogin { get; set; }
@@ -596,7 +596,7 @@ namespace MediaBrowser.Api.LiveTv
     }
 
     [Route("/LiveTv/ListingProviders", "DELETE", Summary = "Deletes a listing provider")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
+    [Authenticated]
     public class DeleteListingProvider : IReturnVoid
     {
         [ApiMember(Name = "Id", Description = "Provider id", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "DELETE")]
@@ -604,7 +604,7 @@ namespace MediaBrowser.Api.LiveTv
     }
 
     [Route("/LiveTv/ListingProviders/Lineups", "GET", Summary = "Gets available lineups")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
+    [Authenticated]
     public class GetLineups : IReturn<List<NameIdPair>>
     {
         [ApiMember(Name = "Id", Description = "Provider id", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET")]
@@ -621,13 +621,13 @@ namespace MediaBrowser.Api.LiveTv
     }
 
     [Route("/LiveTv/ListingProviders/SchedulesDirect/Countries", "GET", Summary = "Gets available lineups")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
+    [Authenticated]
     public class GetSchedulesDirectCountries
     {
     }
 
     [Route("/LiveTv/ChannelMappingOptions")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
+    [Authenticated]
     public class GetChannelMappingOptions
     {
         [ApiMember(Name = "Id", Description = "Provider id", IsRequired = true, DataType = "string", ParameterType = "query", Verb = "GET")]
@@ -635,13 +635,13 @@ namespace MediaBrowser.Api.LiveTv
     }
 
     [Route("/LiveTv/ChannelMappings")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
+    [Authenticated]
     public class SetChannelMapping
     {
         [ApiMember(Name = "Id", Description = "Provider id", IsRequired = true, DataType = "string", ParameterType = "query", Verb = "GET")]
         public string ProviderId { get; set; }
-        public string TunerChannelNumber { get; set; }
-        public string ProviderChannelNumber { get; set; }
+        public string TunerChannelId { get; set; }
+        public string ProviderChannelId { get; set; }
     }
 
     public class ChannelMappingOptions
@@ -660,20 +660,6 @@ namespace MediaBrowser.Api.LiveTv
         public string Feature { get; set; }
     }
 
-    [Route("/LiveTv/TunerHosts/Satip/IniMappings", "GET", Summary = "Gets available mappings")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
-    public class GetSatIniMappings : IReturn<List<NameValuePair>>
-    {
-
-    }
-
-    [Route("/LiveTv/TunerHosts/Satip/ChannelScan", "GET", Summary = "Scans for available channels")]
-    [Authenticated(AllowBeforeStartupWizard = true)]
-    public class GetSatChannnelScanResult : TunerHostInfo
-    {
-
-    }
-
     [Route("/LiveTv/LiveStreamFiles/{Id}/stream.{Container}", "GET", Summary = "Gets a live tv channel")]
     public class GetLiveStreamFile
     {
@@ -685,6 +671,20 @@ namespace MediaBrowser.Api.LiveTv
     public class GetLiveRecordingFile
     {
         public string Id { get; set; }
+    }
+
+    [Route("/LiveTv/TunerHosts/Types", "GET")]
+    [Authenticated]
+    public class GetTunerHostTypes : IReturn<List<NameIdPair>>
+    {
+
+    }
+
+    [Route("/LiveTv/Tuners/Discvover", "GET")]
+    [Authenticated]
+    public class DiscoverTuners : IReturn<List<TunerHostInfo>>
+    {
+        public bool NewDevicesOnly { get; set; }
     }
 
     public class LiveTvService : BaseApiService
@@ -712,6 +712,12 @@ namespace MediaBrowser.Api.LiveTv
             _sessionContext = sessionContext;
         }
 
+        public object Get(GetTunerHostTypes request)
+        {
+            var list = _liveTvManager.GetTunerHostTypes();
+            return ToOptimizedResult(list);
+        }
+
         public object Get(GetLiveRecordingFile request)
         {
             var path = _liveTvManager.GetEmbyTvActiveRecordingPath(request.Id);
@@ -729,6 +735,12 @@ namespace MediaBrowser.Api.LiveTv
             {
                 AllowEndOfFile = false
             };
+        }
+
+        public async Task<object> Get(DiscoverTuners request)
+        {
+            var result = await _liveTvManager.DiscoverTuners(request.NewDevicesOnly, CancellationToken.None).ConfigureAwait(false);
+            return ToOptimizedResult(result);
         }
 
         public async Task<object> Get(GetLiveStreamFile request)
@@ -749,13 +761,6 @@ namespace MediaBrowser.Api.LiveTv
             return ToOptimizedResult(new ListingsProviderInfo());
         }
 
-        public async Task<object> Get(GetSatChannnelScanResult request)
-        {
-            var result = await _liveTvManager.GetSatChannelScanResult(request, CancellationToken.None).ConfigureAwait(false);
-
-            return ToOptimizedResult(result);
-        }
-
         public async Task<object> Get(GetLiveTvRegistrationInfo request)
         {
             var result = await _liveTvManager.GetRegistrationInfo(request.Feature).ConfigureAwait(false);
@@ -765,7 +770,7 @@ namespace MediaBrowser.Api.LiveTv
 
         public async Task<object> Post(SetChannelMapping request)
         {
-            return await _liveTvManager.SetChannelMapping(request.ProviderId, request.TunerChannelNumber, request.ProviderChannelNumber).ConfigureAwait(false);
+            return await _liveTvManager.SetChannelMapping(request.ProviderId, request.TunerChannelId, request.ProviderChannelId).ConfigureAwait(false);
         }
 
         public async Task<object> Get(GetChannelMappingOptions request)
@@ -791,7 +796,7 @@ namespace MediaBrowser.Api.LiveTv
                 ProviderChannels = providerChannels.Select(i => new NameIdPair
                 {
                     Name = i.Name,
-                    Id = i.Number
+                    Id = i.Id
 
                 }).ToList(),
 
@@ -801,11 +806,6 @@ namespace MediaBrowser.Api.LiveTv
             };
 
             return ToOptimizedResult(result);
-        }
-
-        public object Get(GetSatIniMappings request)
-        {
-            return ToOptimizedResult(_liveTvManager.GetSatIniMappings());
         }
 
         public async Task<object> Get(GetSchedulesDirectCountries request)

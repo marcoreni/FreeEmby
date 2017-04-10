@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Dlna;
 using MediaBrowser.Model.Dto;
+using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Logging;
 
 namespace Emby.Server.Implementations.LiveTv
@@ -14,6 +15,8 @@ namespace Emby.Server.Implementations.LiveTv
     {
         private readonly IMediaEncoder _mediaEncoder;
         private readonly ILogger _logger;
+
+        const int AnalyzeDurationMs = 2000;
 
         public LiveStreamHelper(IMediaEncoder mediaEncoder, ILogger logger)
         {
@@ -27,13 +30,15 @@ namespace Emby.Server.Implementations.LiveTv
 
             var now = DateTime.UtcNow;
 
+            var allowVideoStreamCopy = mediaSource.MediaStreams.Any(i => i.Type == MediaStreamType.Video && i.AllowStreamCopy);
+
             var info = await _mediaEncoder.GetMediaInfo(new MediaInfoRequest
             {
                 InputPath = mediaSource.Path,
                 Protocol = mediaSource.Protocol,
                 MediaType = isAudio ? DlnaProfileType.Audio : DlnaProfileType.Video,
                 ExtractChapters = false,
-                AnalyzeDurationSections = 2
+                AnalyzeDurationMs = AnalyzeDurationMs
 
             }, cancellationToken).ConfigureAwait(false);
 
@@ -71,6 +76,8 @@ namespace Emby.Server.Implementations.LiveTv
             var videoStream = mediaSource.MediaStreams.FirstOrDefault(i => i.Type == MediaBrowser.Model.Entities.MediaStreamType.Video);
             if (videoStream != null)
             {
+                videoStream.AllowStreamCopy = allowVideoStreamCopy;
+
                 if (!videoStream.BitRate.HasValue)
                 {
                     var width = videoStream.Width ?? 1920;
@@ -97,6 +104,8 @@ namespace Emby.Server.Implementations.LiveTv
 
             // Try to estimate this
             mediaSource.InferTotalBitrate(true);
+
+            mediaSource.AnalyzeDurationMs = AnalyzeDurationMs;
         }
     }
 }

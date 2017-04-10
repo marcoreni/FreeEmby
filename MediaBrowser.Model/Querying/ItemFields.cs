@@ -21,11 +21,6 @@
         AwardSummary,
 
         /// <summary>
-        /// The budget
-        /// </summary>
-        Budget,
-
-        /// <summary>
         /// The can delete
         /// </summary>
         CanDelete,
@@ -127,11 +122,6 @@
         /// </summary>
         MediaSources,
 
-        /// <summary>
-        /// The metascore
-        /// </summary>
-        Metascore,
-
         OfficialRatingDescription,
 
         OriginalTitle,
@@ -156,6 +146,8 @@
         /// </summary>
         People,
 
+        PlayAccess,
+
         /// <summary>
         /// The production locations
         /// </summary>
@@ -174,11 +166,6 @@
         RecursiveItemCount,
 
         /// <summary>
-        /// The revenue
-        /// </summary>
-        Revenue,
-
-        /// <summary>
         /// The season name
         /// </summary>
         SeasonName,
@@ -187,11 +174,6 @@
         /// The settings
         /// </summary>
         Settings,
-
-        /// <summary>
-        /// The short overview
-        /// </summary>
-        ShortOverview,
 
         /// <summary>
         /// The screenshot image tags

@@ -207,54 +207,6 @@ namespace MediaBrowser.LocalMetadata.Parsers
                         break;
                     }
 
-                case "Budget":
-                    {
-                        var text = reader.ReadElementContentAsString();
-                        var hasBudget = item as IHasBudget;
-                        if (hasBudget != null)
-                        {
-                            double value;
-                            if (double.TryParse(text, NumberStyles.Any, _usCulture, out value))
-                            {
-                                hasBudget.Budget = value;
-                            }
-                        }
-
-                        break;
-                    }
-
-                case "Revenue":
-                    {
-                        var text = reader.ReadElementContentAsString();
-                        var hasBudget = item as IHasBudget;
-                        if (hasBudget != null)
-                        {
-                            double value;
-                            if (double.TryParse(text, NumberStyles.Any, _usCulture, out value))
-                            {
-                                hasBudget.Revenue = value;
-                            }
-                        }
-
-                        break;
-                    }
-
-                case "Metascore":
-                    {
-                        var text = reader.ReadElementContentAsString();
-                        var hasMetascore = item as IHasMetascore;
-                        if (hasMetascore != null)
-                        {
-                            float value;
-                            if (float.TryParse(text, NumberStyles.Any, _usCulture, out value))
-                            {
-                                hasMetascore.Metascore = value;
-                            }
-                        }
-
-                        break;
-                    }
-
                 case "AwardSummary":
                     {
                         var text = reader.ReadElementContentAsString();
@@ -289,18 +241,6 @@ namespace MediaBrowser.LocalMetadata.Parsers
                         if (!string.IsNullOrWhiteSpace(val))
                         {
                             item.Overview = val;
-                        }
-
-                        break;
-                    }
-
-                case "ShortOverview":
-                    {
-                        var val = reader.ReadElementContentAsString();
-
-                        if (!string.IsNullOrWhiteSpace(val))
-                        {
-                            item.ShortOverview = val;
                         }
 
                         break;

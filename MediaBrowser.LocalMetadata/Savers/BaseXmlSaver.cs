@@ -37,7 +37,6 @@ namespace MediaBrowser.LocalMetadata.Savers
                     "AudioDbArtistId",
                     "AwardSummary",
                     "BirthDate",
-                    "Budget",
                     
                     // Deprecated. No longer saving in this field.
                     "certification",
@@ -69,7 +68,6 @@ namespace MediaBrowser.LocalMetadata.Savers
                     "LockData",
                     "LockedFields",
                     "Format3D",
-                    "Metascore",
                     
                     // Deprecated. No longer saving in this field.
                     "MPAARating",
@@ -85,13 +83,11 @@ namespace MediaBrowser.LocalMetadata.Savers
                     "MusicbrainzId",
 
                     "Overview",
-                    "ShortOverview",
                     "Persons",
                     "PlotKeywords",
                     "PremiereDate",
                     "ProductionYear",
                     "Rating",
-                    "Revenue",
                     "RottenTomatoesId",
                     "RunningTime",
                     
@@ -351,10 +347,6 @@ namespace MediaBrowser.LocalMetadata.Savers
             {
                 writer.WriteElementString("OriginalTitle", item.OriginalTitle);
             }
-            if (!string.IsNullOrEmpty(item.ShortOverview))
-            {
-                writer.WriteElementString("ShortOverview", item.ShortOverview);
-            }
             if (!string.IsNullOrEmpty(item.CustomRating))
             {
                 writer.WriteElementString("CustomRating", item.CustomRating);
@@ -428,30 +420,10 @@ namespace MediaBrowser.LocalMetadata.Savers
                 writer.WriteElementString("DisplayOrder", hasDisplayOrder.DisplayOrder);
             }
 
-            var hasMetascore = item as IHasMetascore;
-            if (hasMetascore != null && hasMetascore.Metascore.HasValue)
-            {
-                writer.WriteElementString("Metascore", hasMetascore.Metascore.Value.ToString(UsCulture));
-            }
-
             var hasAwards = item as IHasAwards;
             if (hasAwards != null && !string.IsNullOrEmpty(hasAwards.AwardSummary))
             {
                 writer.WriteElementString("AwardSummary", hasAwards.AwardSummary);
-            }
-
-            var hasBudget = item as IHasBudget;
-            if (hasBudget != null)
-            {
-                if (hasBudget.Budget.HasValue)
-                {
-                    writer.WriteElementString("Budget", hasBudget.Budget.Value.ToString(UsCulture));
-                }
-
-                if (hasBudget.Revenue.HasValue)
-                {
-                    writer.WriteElementString("Revenue", hasBudget.Revenue.Value.ToString(UsCulture));
-                }
             }
 
             if (item.CommunityRating.HasValue)

@@ -80,12 +80,6 @@ namespace MediaBrowser.Model.Dto
         public string PreferredMetadataCountryCode { get; set; }
 
         public string AwardSummary { get; set; }
-        public string ShareUrl { get; set; }
-
-        public float? Metascore { get; set; }
-        public bool? HasDynamicCategories { get; set; }
-
-        public int? AnimeSeriesIndex { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether [supports synchronize].
@@ -212,12 +206,6 @@ namespace MediaBrowser.Model.Dto
         public string Overview { get; set; }
 
         /// <summary>
-        /// Gets or sets the short overview.
-        /// </summary>
-        /// <value>The short overview.</value>
-        public string ShortOverview { get; set; }
-
-        /// <summary>
         /// Gets or sets the taglines.
         /// </summary>
         /// <value>The taglines.</value>
@@ -269,7 +257,7 @@ namespace MediaBrowser.Model.Dto
         /// Gets or sets the play access.
         /// </summary>
         /// <value>The play access.</value>
-        public PlayAccess PlayAccess { get; set; }
+        public PlayAccess? PlayAccess { get; set; }
 
         /// <summary>
         /// Gets or sets the aspect ratio.
@@ -327,12 +315,6 @@ namespace MediaBrowser.Model.Dto
         public List<MediaUrl> RemoteTrailers { get; set; }
 
         /// <summary>
-        /// Gets or sets the soundtrack ids.
-        /// </summary>
-        /// <value>The soundtrack ids.</value>
-        public string[] SoundtrackIds { get; set; }
-
-        /// <summary>
         /// Gets or sets the provider ids.
         /// </summary>
         /// <value>The provider ids.</value>
@@ -349,15 +331,6 @@ namespace MediaBrowser.Model.Dto
         /// </summary>
         /// <value><c>true</c> if this instance is folder; otherwise, <c>false</c>.</value>
         public bool? IsFolder { get; set; }
-
-        [IgnoreDataMember]
-        public bool IsFolderItem
-        {
-            get
-            {
-                return IsFolder ?? false;
-            }
-        }
 
         /// <summary>
         /// Gets or sets the parent id.
@@ -412,11 +385,6 @@ namespace MediaBrowser.Model.Dto
         /// </summary>
         /// <value>The user data.</value>
         public UserItemDataDto UserData { get; set; }
-        /// <summary>
-        /// Gets or sets the season user data.
-        /// </summary>
-        /// <value>The season user data.</value>
-        public UserItemDataDto SeasonUserData { get; set; }
 
         /// <summary>
         /// Gets or sets the recursive item count.
@@ -466,56 +434,6 @@ namespace MediaBrowser.Model.Dto
         /// <value>The status.</value>
         public string Status { get; set; }
 
-        [IgnoreDataMember]
-        public SeriesStatus? SeriesStatus
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(Status))
-                {
-                    return null;
-                }
-
-                return (SeriesStatus)Enum.Parse(typeof(SeriesStatus), Status, true);
-            }
-            set
-            {
-                if (value == null)
-                {
-                    Status = null;
-                }
-                else
-                {
-                    Status = value.Value.ToString();
-                }
-            }
-        }
-
-        [IgnoreDataMember]
-        public RecordingStatus? RecordingStatus
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(Status))
-                {
-                    return null;
-                }
-
-                return (RecordingStatus)Enum.Parse(typeof(RecordingStatus), Status, true);
-            }
-            set
-            {
-                if (value == null)
-                {
-                    Status = null;
-                }
-                else
-                {
-                    Status = value.Value.ToString();
-                }
-            }
-        }
-
         /// <summary>
         /// Gets or sets the air time.
         /// </summary>
@@ -527,12 +445,6 @@ namespace MediaBrowser.Model.Dto
         /// </summary>
         /// <value>The air days.</value>
         public List<DayOfWeek> AirDays { get; set; }
-
-        /// <summary>
-        /// Gets or sets the index options.
-        /// </summary>
-        /// <value>The index options.</value>
-        public string[] IndexOptions { get; set; }
 
         /// <summary>
         /// Gets or sets the tags.
@@ -576,12 +488,6 @@ namespace MediaBrowser.Model.Dto
         /// <value>The type of the collection.</value>
         public string CollectionType { get; set; }
 
-        /// <summary>
-        /// Gets or sets the type of the original collection.
-        /// </summary>
-        /// <value>The type of the original collection.</value>
-        public string OriginalCollectionType { get; set; }
-        
         /// <summary>
         /// Gets or sets the display order.
         /// </summary>
@@ -656,19 +562,6 @@ namespace MediaBrowser.Model.Dto
         public bool IsType(Type type)
         {
             return IsType(type.Name);
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether [supports playlists].
-        /// </summary>
-        /// <value><c>true</c> if [supports playlists]; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool SupportsPlaylists
-        {
-            get
-            {
-                return RunTimeTicks.HasValue || IsFolderItem || IsGenre || IsMusicGenre || IsArtist;
-            }
         }
 
         /// <summary>
@@ -765,7 +658,7 @@ namespace MediaBrowser.Model.Dto
         /// Gets or sets the type of the location.
         /// </summary>
         /// <value>The type of the location.</value>
-        public LocationType LocationType { get; set; }
+        public LocationType? LocationType { get; set; }
 
         /// <summary>
         /// Gets or sets the type of the iso.
@@ -790,18 +683,6 @@ namespace MediaBrowser.Model.Dto
         /// </summary>
         /// <value>The home page URL.</value>
         public string HomePageUrl { get; set; }
-
-        /// <summary>
-        /// Gets or sets the budget.
-        /// </summary>
-        /// <value>The budget.</value>
-        public double? Budget { get; set; }
-
-        /// <summary>
-        /// Gets or sets the revenue.
-        /// </summary>
-        /// <value>The revenue.</value>
-        public double? Revenue { get; set; }
 
         /// <summary>
         /// Gets or sets the locked fields.
@@ -885,56 +766,6 @@ namespace MediaBrowser.Model.Dto
         public string SeriesTimerId { get; set; }
 
         /// <summary>
-        /// Gets a value indicating whether this instance can resume.
-        /// </summary>
-        /// <value><c>true</c> if this instance can resume; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool CanResume
-        {
-            get { return UserData != null && UserData.PlaybackPositionTicks > 0; }
-        }
-
-        /// <summary>
-        /// Gets the resume position ticks.
-        /// </summary>
-        /// <value>The resume position ticks.</value>
-        [IgnoreDataMember]
-        public long ResumePositionTicks
-        {
-            get { return UserData == null ? 0 : UserData.PlaybackPositionTicks; }
-        }
-
-        /// <summary>
-        /// Gets the backdrop count.
-        /// </summary>
-        /// <value>The backdrop count.</value>
-        [IgnoreDataMember]
-        public int BackdropCount
-        {
-            get { return BackdropImageTags == null ? 0 : BackdropImageTags.Count; }
-        }
-
-        /// <summary>
-        /// Gets the screenshot count.
-        /// </summary>
-        /// <value>The screenshot count.</value>
-        [IgnoreDataMember]
-        public int ScreenshotCount
-        {
-            get { return ScreenshotImageTags == null ? 0 : ScreenshotImageTags.Count; }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance has banner.
-        /// </summary>
-        /// <value><c>true</c> if this instance has banner; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool HasBanner
-        {
-            get { return ImageTags != null && ImageTags.ContainsKey(ImageType.Banner); }
-        }
-
-        /// <summary>
         /// Gets a value indicating whether this instance has art.
         /// </summary>
         /// <value><c>true</c> if this instance has art; otherwise, <c>false</c>.</value>
@@ -985,46 +816,6 @@ namespace MediaBrowser.Model.Dto
         }
 
         /// <summary>
-        /// Gets a value indicating whether this instance has disc image.
-        /// </summary>
-        /// <value><c>true</c> if this instance has disc image; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool HasDiscImage
-        {
-            get { return ImageTags != null && ImageTags.ContainsKey(ImageType.Disc); }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance has box image.
-        /// </summary>
-        /// <value><c>true</c> if this instance has box image; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool HasBoxImage
-        {
-            get { return ImageTags != null && ImageTags.ContainsKey(ImageType.Box); }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance has box image.
-        /// </summary>
-        /// <value><c>true</c> if this instance has box image; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool HasBoxRearImage
-        {
-            get { return ImageTags != null && ImageTags.ContainsKey(ImageType.BoxRear); }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance has menu image.
-        /// </summary>
-        /// <value><c>true</c> if this instance has menu image; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool HasMenuImage
-        {
-            get { return ImageTags != null && ImageTags.ContainsKey(ImageType.Menu); }
-        }
-
-        /// <summary>
         /// Gets a value indicating whether this instance is video.
         /// </summary>
         /// <value><c>true</c> if this instance is video; otherwise, <c>false</c>.</value>
@@ -1032,91 +823,6 @@ namespace MediaBrowser.Model.Dto
         public bool IsVideo
         {
             get { return StringHelper.EqualsIgnoreCase(MediaType, Entities.MediaType.Video); }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance is audio.
-        /// </summary>
-        /// <value><c>true</c> if this instance is audio; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool IsAudio
-        {
-            get { return StringHelper.EqualsIgnoreCase(MediaType, Entities.MediaType.Audio); }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance is game.
-        /// </summary>
-        /// <value><c>true</c> if this instance is game; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool IsGame
-        {
-            get { return StringHelper.EqualsIgnoreCase(MediaType, Entities.MediaType.Game); }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance is person.
-        /// </summary>
-        /// <value><c>true</c> if this instance is person; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool IsPerson
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "Person"); }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance is root.
-        /// </summary>
-        /// <value><c>true</c> if this instance is root; otherwise, <c>false</c>.</value>
-        [IgnoreDataMember]
-        public bool IsRoot
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "AggregateFolder"); }
-        }
-
-        [IgnoreDataMember]
-        public bool IsMusicGenre
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "MusicGenre"); }
-        }
-
-        [IgnoreDataMember]
-        public bool IsGameGenre
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "GameGenre"); }
-        }
-
-        [IgnoreDataMember]
-        public bool IsGenre
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "Genre"); }
-        }
-
-        [IgnoreDataMember]
-        public bool IsArtist
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "MusicArtist"); }
-        }
-
-        [IgnoreDataMember]
-        public bool IsAlbum
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "MusicAlbum"); }
-        }
-
-        [IgnoreDataMember]
-        public bool IsStudio
-        {
-            get { return StringHelper.EqualsIgnoreCase(Type, "Studio"); }
-        }
-
-        [IgnoreDataMember]
-        public bool SupportsSimilarItems
-        {
-            get
-            {
-                return IsType("Movie") || IsType("Series") || IsType("MusicAlbum") || IsType("MusicArtist") || IsType("Program") || IsType("Recording") || IsType("ChannelVideoItem") || IsType("Game");
-            }
         }
 
         /// <summary>

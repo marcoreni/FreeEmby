@@ -136,13 +136,6 @@ namespace MediaBrowser.Providers.Movies
 
             movie.HomePageUrl = movieData.homepage;
 
-            var hasBudget = movie as IHasBudget;
-            if (hasBudget != null)
-            {
-                hasBudget.Budget = movieData.budget;
-                hasBudget.Revenue = movieData.revenue;
-            }
-
             if (!string.IsNullOrEmpty(movieData.tagline))
             {
                 movie.Tagline = movieData.tagline;
@@ -271,7 +264,12 @@ namespace MediaBrowser.Providers.Movies
             //and the rest from crew
             if (movieData.casts != null && movieData.casts.crew != null)
             {
-                var keepTypes = new[] { PersonType.Director, PersonType.Writer, PersonType.Producer };
+                var keepTypes = new[]
+                {
+                    PersonType.Director,
+                    PersonType.Writer,
+                    //PersonType.Producer
+                };
 
                 foreach (var person in movieData.casts.crew)
                 {

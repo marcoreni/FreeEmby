@@ -272,6 +272,11 @@ namespace MediaBrowser.Providers.Omdb
             return false;
         }
 
+        public static async Task<string> GetOmdbBaseUrl(CancellationToken cancellationToken)
+        {
+            return "https://www.omdbapi.com";
+        }
+
         private async Task<string> EnsureItemInfo(string imdbId, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(imdbId))
@@ -294,16 +299,10 @@ namespace MediaBrowser.Providers.Omdb
                 }
             }
 
-            var url = string.Format("https://www.omdbapi.com/?i={0}&tomatoes=true", imdbParam);
+            var baseUrl = await GetOmdbBaseUrl(cancellationToken).ConfigureAwait(false);
+            var url = string.Format(baseUrl + "/?i={0}&plot=full&tomatoes=true&r=json", imdbParam);
 
-            using (var stream = await _httpClient.Get(new HttpRequestOptions
-            {
-                Url = url,
-                ResourcePool = ResourcePool,
-                CancellationToken = cancellationToken,
-                BufferContent = true
-
-            }).ConfigureAwait(false))
+            using (var stream = await GetOmdbResponse(_httpClient, url, cancellationToken).ConfigureAwait(false))
             {
                 var rootObject = _jsonSerializer.DeserializeFromStream<RootObject>(stream);
                 _fileSystem.CreateDirectory(Path.GetDirectoryName(path));
@@ -335,16 +334,10 @@ namespace MediaBrowser.Providers.Omdb
                 }
             }
 
-            var url = string.Format("https://www.omdbapi.com/?i={0}&season={1}&detail=full", imdbParam, seasonId);
+            var baseUrl = await GetOmdbBaseUrl(cancellationToken).ConfigureAwait(false);
+            var url = string.Format(baseUrl + "/?i={0}&season={1}&detail=full", imdbParam, seasonId);
 
-            using (var stream = await _httpClient.Get(new HttpRequestOptions
-            {
-                Url = url,
-                ResourcePool = ResourcePool,
-                CancellationToken = cancellationToken,
-                BufferContent = true
-
-            }).ConfigureAwait(false))
+            using (var stream = await GetOmdbResponse(_httpClient, url, cancellationToken).ConfigureAwait(false))
             {
                 var rootObject = _jsonSerializer.DeserializeFromStream<SeasonRootObject>(stream);
                 _fileSystem.CreateDirectory(Path.GetDirectoryName(path));
@@ -352,6 +345,18 @@ namespace MediaBrowser.Providers.Omdb
             }
 
             return path;
+        }
+
+        public static Task<Stream> GetOmdbResponse(IHttpClient httpClient, string url, CancellationToken cancellationToken)
+        {
+            return httpClient.Get(new HttpRequestOptions
+            {
+                Url = url,
+                ResourcePool = ResourcePool,
+                CancellationToken = cancellationToken,
+                BufferContent = true,
+                EnableDefaultUserAgent = true
+            });
         }
 
         internal string GetDataFilePath(string imdbId)
@@ -387,10 +392,11 @@ namespace MediaBrowser.Providers.Omdb
         {
             T item = itemResult.Item;
 
+            var isConfiguredForEnglish = IsConfiguredForEnglish(item);
+
             // Grab series genres because imdb data is better than tvdb. Leave movies alone
             // But only do it if english is the preferred language because this data will not be localized
-            if (ShouldFetchGenres(item) &&
-                !string.IsNullOrWhiteSpace(result.Genre))
+            if (isConfiguredForEnglish && !string.IsNullOrWhiteSpace(result.Genre))
             {
                 item.Genres.Clear();
 
@@ -403,25 +409,17 @@ namespace MediaBrowser.Providers.Omdb
                 }
             }
 
-            var hasMetascore = item as IHasMetascore;
-            if (hasMetascore != null)
-            {
-                float metascore;
-
-                if (!string.IsNullOrEmpty(result.Metascore) && float.TryParse(result.Metascore, NumberStyles.Any, _usCulture, out metascore) && metascore >= 0)
-                {
-                    hasMetascore.Metascore = metascore;
-                }
-            }
-
             var hasAwards = item as IHasAwards;
             if (hasAwards != null && !string.IsNullOrEmpty(result.Awards))
             {
                 hasAwards.AwardSummary = WebUtility.HtmlDecode(result.Awards);
             }
 
-            // Imdb plots are usually pretty short
-            item.ShortOverview = result.Plot;
+            if (isConfiguredForEnglish)
+            {
+                // Omdb is currently english only, so for other languages skip this and let secondary providers fill it in
+                item.Overview = result.Plot;
+            }
 
             //if (!string.IsNullOrWhiteSpace(result.Director))
             //{
@@ -464,7 +462,7 @@ namespace MediaBrowser.Providers.Omdb
             //}
         }
 
-        private bool ShouldFetchGenres(BaseItem item)
+        private bool IsConfiguredForEnglish(BaseItem item)
         {
             var lang = item.GetPreferredMetadataLanguage();
 

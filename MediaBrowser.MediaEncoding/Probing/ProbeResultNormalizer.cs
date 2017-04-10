@@ -90,13 +90,11 @@ namespace MediaBrowser.MediaEncoding.Probing
             }
 
             FetchGenres(info, tags);
-            var shortOverview = FFProbeHelpers.GetDictionaryValue(tags, "description");
             var overview = FFProbeHelpers.GetDictionaryValue(tags, "synopsis");
 
             if (string.IsNullOrWhiteSpace(overview))
             {
-                overview = shortOverview;
-                shortOverview = null;
+                overview = FFProbeHelpers.GetDictionaryValue(tags, "description");
             }
             if (string.IsNullOrWhiteSpace(overview))
             {
@@ -106,11 +104,6 @@ namespace MediaBrowser.MediaEncoding.Probing
             if (!string.IsNullOrWhiteSpace(overview))
             {
                 info.Overview = overview;
-            }
-
-            if (!string.IsNullOrWhiteSpace(shortOverview))
-            {
-                info.ShortOverview = shortOverview;
             }
 
             var title = FFProbeHelpers.GetDictionaryValue(tags, "title");
@@ -515,6 +508,11 @@ namespace MediaBrowser.MediaEncoding.Probing
                 stream.IsAVC = false;
             }
 
+            if (!string.IsNullOrWhiteSpace(streamInfo.field_order) && !string.Equals(streamInfo.field_order, "progressive", StringComparison.OrdinalIgnoreCase))
+            {
+                stream.IsInterlaced = true;
+            }
+
             // Filter out junk
             if (!string.IsNullOrWhiteSpace(streamInfo.codec_tag_string) && streamInfo.codec_tag_string.IndexOf("[0]", StringComparison.OrdinalIgnoreCase) == -1)
             {
@@ -565,12 +563,35 @@ namespace MediaBrowser.MediaEncoding.Probing
                     ? MediaStreamType.EmbeddedImage
                     : MediaStreamType.Video;
 
+                stream.AverageFrameRate = GetFrameRate(streamInfo.avg_frame_rate);
+                stream.RealFrameRate = GetFrameRate(streamInfo.r_frame_rate);
+
+                if (isAudio || string.Equals(stream.Codec, "gif", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(stream.Codec, "png", StringComparison.OrdinalIgnoreCase))
+                {
+                    stream.Type = MediaStreamType.EmbeddedImage;
+                }
+                else if (string.Equals(stream.Codec, "mjpeg", StringComparison.OrdinalIgnoreCase))
+                {
+                    // How to differentiate between video and embedded image?
+                    // The only difference I've seen thus far is presence of codec tag, also embedded images have high (unusual) framerates 
+                    if (!string.IsNullOrWhiteSpace(stream.CodecTag))
+                    {
+                        stream.Type = MediaStreamType.Video;
+                    }
+                    else
+                    {
+                        stream.Type = MediaStreamType.EmbeddedImage;
+                    }
+                }
+                else
+                {
+                    stream.Type = MediaStreamType.Video;
+                }
+
                 stream.Width = streamInfo.width;
                 stream.Height = streamInfo.height;
                 stream.AspectRatio = GetAspectRatio(streamInfo);
-
-                stream.AverageFrameRate = GetFrameRate(streamInfo.avg_frame_rate);
-                stream.RealFrameRate = GetFrameRate(streamInfo.r_frame_rate);
 
                 if (streamInfo.bits_per_sample > 0)
                 {

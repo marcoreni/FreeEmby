@@ -756,19 +756,9 @@ namespace MediaBrowser.Controller.Entities
                     Logger.Debug("Query requires post-filtering due to ItemSortBy.AiredEpisodeOrder");
                     return true;
                 }
-                if (query.SortBy.Contains(ItemSortBy.Budget, StringComparer.OrdinalIgnoreCase))
-                {
-                    Logger.Debug("Query requires post-filtering due to ItemSortBy.Budget");
-                    return true;
-                }
                 if (query.SortBy.Contains(ItemSortBy.GameSystem, StringComparer.OrdinalIgnoreCase))
                 {
                     Logger.Debug("Query requires post-filtering due to ItemSortBy.GameSystem");
-                    return true;
-                }
-                if (query.SortBy.Contains(ItemSortBy.Metascore, StringComparer.OrdinalIgnoreCase))
-                {
-                    Logger.Debug("Query requires post-filtering due to ItemSortBy.Metascore");
                     return true;
                 }
                 if (query.SortBy.Contains(ItemSortBy.Players, StringComparer.OrdinalIgnoreCase))
@@ -776,22 +766,11 @@ namespace MediaBrowser.Controller.Entities
                     Logger.Debug("Query requires post-filtering due to ItemSortBy.Players");
                     return true;
                 }
-                if (query.SortBy.Contains(ItemSortBy.Revenue, StringComparer.OrdinalIgnoreCase))
-                {
-                    Logger.Debug("Query requires post-filtering due to ItemSortBy.Revenue");
-                    return true;
-                }
                 if (query.SortBy.Contains(ItemSortBy.VideoBitRate, StringComparer.OrdinalIgnoreCase))
                 {
                     Logger.Debug("Query requires post-filtering due to ItemSortBy.VideoBitRate");
                     return true;
                 }
-            }
-
-            if (query.ItemIds.Length > 0)
-            {
-                Logger.Debug("Query requires post-filtering due to ItemIds");
-                return true;
             }
 
             if (query.IsInBoxSet.HasValue)
