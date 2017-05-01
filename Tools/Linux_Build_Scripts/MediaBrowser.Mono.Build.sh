@@ -107,7 +107,7 @@ echo "Updating NuGet to the latest version"
 mono Nuget/nuget.exe update -self
 }
 echo "Restoring NuGet package"
-mono Nuget/nuget.exe restore MediaBrowser.Mono.sln
+# mono Nuget/nuget.exe restore MediaBrowser.Mono.sln
 
 
 echo ""
