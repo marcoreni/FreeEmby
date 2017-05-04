@@ -83,7 +83,7 @@ define(["appSettings", "loading", "apphost", "iapManager", "events", "shell", "g
             } : null;
             return iapManager.getSubscriptionOptions().then(function(subscriptionOptions) {
                 return subscriptionOptions.filter(function(p) {
-                    return p.owned
+                    return true
                 }).length > 0 ? Promise.resolve() : connectionManager.getRegistrationInfo(iapManager.getAdminFeatureName(feature), connectionManager.currentApiClient()).catch(function() {
                     var dialogOptions = {
                         title: globalize.translate("sharedcomponents#HeaderUnlockFeature"),
