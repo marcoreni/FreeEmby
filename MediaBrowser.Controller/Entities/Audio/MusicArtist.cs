@@ -90,7 +90,7 @@ namespace MediaBrowser.Controller.Entities.Audio
         }
 
         [IgnoreDataMember]
-        protected override IEnumerable<BaseItem> ActualChildren
+        public override IEnumerable<BaseItem> Children
         {
             get
             {
@@ -99,7 +99,7 @@ namespace MediaBrowser.Controller.Entities.Audio
                     return new List<BaseItem>();
                 }
 
-                return base.ActualChildren;
+                return base.Children;
             }
         }
 
@@ -264,20 +264,6 @@ namespace MediaBrowser.Controller.Entities.Audio
                 .ToList();
 
             return info;
-        }
-
-        public IEnumerable<BaseItem> GetTaggedItems(IEnumerable<BaseItem> inputItems)
-        {
-            return inputItems.Where(GetItemFilter());
-        }
-
-        public Func<BaseItem, bool> GetItemFilter()
-        {
-            return i =>
-            {
-                var hasArtist = i as IHasArtist;
-                return hasArtist != null && hasArtist.HasAnyArtist(Name);
-            };
         }
 
         [IgnoreDataMember]

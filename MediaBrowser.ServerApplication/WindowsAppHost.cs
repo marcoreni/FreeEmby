@@ -25,7 +25,7 @@ namespace MediaBrowser.ServerApplication
 {
     public class WindowsAppHost : ApplicationHost
     {
-        public WindowsAppHost(ServerApplicationPaths applicationPaths, ILogManager logManager, StartupOptions options, IFileSystem fileSystem, IPowerManagement powerManagement, string releaseAssetFilename, IEnvironmentInfo environmentInfo, MediaBrowser.Controller.Drawing.IImageEncoder imageEncoder, ISystemEvents systemEvents, IMemoryStreamFactory memoryStreamFactory, MediaBrowser.Common.Net.INetworkManager networkManager, Action<string, string> certificateGenerator, Func<string> defaultUsernameFactory)
+        public WindowsAppHost(ServerApplicationPaths applicationPaths, ILogManager logManager, StartupOptions options, IFileSystem fileSystem, IPowerManagement powerManagement, string releaseAssetFilename, IEnvironmentInfo environmentInfo, MediaBrowser.Controller.Drawing.IImageEncoder imageEncoder, ISystemEvents systemEvents, IMemoryStreamFactory memoryStreamFactory, MediaBrowser.Common.Net.INetworkManager networkManager, Action<string, string, string> certificateGenerator, Func<string> defaultUsernameFactory)
             : base(applicationPaths, logManager, options, fileSystem, powerManagement, releaseAssetFilename, environmentInfo, imageEncoder, systemEvents, memoryStreamFactory, networkManager, certificateGenerator, defaultUsernameFactory)
         {
         }
@@ -55,19 +55,9 @@ namespace MediaBrowser.ServerApplication
             LoopUtil.Run(appName);
         }
 
-        public override PackageVersionClass SystemUpdateLevel
-        {
-            get { return UpdateLevelHelper.GetSystemUpdateLevel(ConfigurationManager); }
-        }
-
         protected override List<Assembly> GetAssembliesWithPartsInternal()
         {
             var list = new List<Assembly>();
-
-            if (!Environment.Is64BitProcess)
-            {
-                //list.Add(typeof(PismoIsoManager).Assembly);
-            }
 
             list.Add(typeof(DefaultIntroProvider).Assembly);
             list.Add(typeof(ConnectManager).Assembly);

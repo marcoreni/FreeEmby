@@ -392,10 +392,27 @@ namespace Emby.Common.Implementations.IO
 
             if (_supportsAsyncFileStreams && isAsync)
             {
-                return new FileStream(path, GetFileMode(mode), GetFileAccess(access), GetFileShare(share), 262144, true);
+                return GetFileStream(path, mode, access, share, FileOpenOptions.Asynchronous);
             }
 
-            return new FileStream(path, GetFileMode(mode), GetFileAccess(access), GetFileShare(share), 262144);
+            return GetFileStream(path, mode, access, share, FileOpenOptions.None);
+        }
+
+        public Stream GetFileStream(string path, FileOpenMode mode, FileAccessMode access, FileShareMode share, FileOpenOptions fileOpenOptions)
+        {
+            if (_sharpCifsFileSystem.IsEnabledForPath(path))
+            {
+                return _sharpCifsFileSystem.GetFileStream(path, mode, access, share);
+            }
+
+            var defaultBufferSize = 4096;
+            return new FileStream(path, GetFileMode(mode), GetFileAccess(access), GetFileShare(share), defaultBufferSize, GetFileOptions(fileOpenOptions));
+        }
+
+        private FileOptions GetFileOptions(FileOpenOptions mode)
+        {
+            var val = (int)mode;
+            return (FileOptions)val;
         }
 
         private FileMode GetFileMode(FileOpenMode mode)
@@ -501,6 +518,49 @@ namespace Emby.Common.Implementations.IO
             }
         }
 
+        public void SetAttributes(string path, bool isHidden, bool isReadOnly)
+        {
+            if (_sharpCifsFileSystem.IsEnabledForPath(path))
+            {
+                _sharpCifsFileSystem.SetAttributes(path, isHidden, isReadOnly);
+                return;
+            }
+
+            var info = GetFileInfo(path);
+
+            if (!info.Exists)
+            {
+                return;
+            }
+
+            if (info.IsReadOnly == isReadOnly && info.IsHidden == isHidden)
+            {
+                return;
+            }
+
+            var attributes = File.GetAttributes(path);
+
+            if (isReadOnly)
+            {
+                attributes = attributes | FileAttributes.ReadOnly;
+            }
+            else
+            {
+                attributes = RemoveAttribute(attributes, FileAttributes.ReadOnly);
+            }
+
+            if (isHidden)
+            {
+                attributes = attributes | FileAttributes.Hidden;
+            }
+            else
+            {
+                attributes = RemoveAttribute(attributes, FileAttributes.Hidden);
+            }
+
+            File.SetAttributes(path, attributes);
+        }
+
         private static FileAttributes RemoveAttribute(FileAttributes attributes, FileAttributes attributesToRemove)
         {
             return attributes & ~attributesToRemove;
@@ -546,24 +606,6 @@ namespace Emby.Common.Implementations.IO
             return Path.DirectorySeparatorChar;
         }
 
-        public bool AreEqual(string path1, string path2)
-        {
-            if (path1 == null && path2 == null)
-            {
-                return true;
-            }
-
-            if (path1 == null || path2 == null)
-            {
-                return false;
-            }
-
-            path1 = path1.TrimEnd(GetDirectorySeparatorChar(path1));
-            path2 = path2.TrimEnd(GetDirectorySeparatorChar(path2));
-
-            return string.Equals(path1, path2, StringComparison.OrdinalIgnoreCase);
-        }
-
         public bool ContainsSubPath(string parentPath, string path)
         {
             if (string.IsNullOrEmpty(parentPath))
@@ -588,7 +630,7 @@ namespace Emby.Common.Implementations.IO
                 throw new ArgumentNullException("path");
             }
 
-            var parent = Path.GetDirectoryName(path);
+            var parent = GetDirectoryName(path);
 
             if (!string.IsNullOrEmpty(parent))
             {
@@ -598,11 +640,26 @@ namespace Emby.Common.Implementations.IO
             return true;
         }
 
+        public string GetDirectoryName(string path)
+        {
+            if (_sharpCifsFileSystem.IsEnabledForPath(path))
+            {
+                return _sharpCifsFileSystem.GetDirectoryName(path);
+            }
+
+            return Path.GetDirectoryName(path);
+        }
+
         public string NormalizePath(string path)
         {
             if (string.IsNullOrEmpty(path))
             {
                 throw new ArgumentNullException("path");
+            }
+
+            if (_sharpCifsFileSystem.IsEnabledForPath(path))
+            {
+                return _sharpCifsFileSystem.NormalizePath(path);
             }
 
             if (path.EndsWith(":\\", StringComparison.OrdinalIgnoreCase))
@@ -611,6 +668,21 @@ namespace Emby.Common.Implementations.IO
             }
 
             return path.TrimEnd(GetDirectorySeparatorChar(path));
+        }
+
+        public bool AreEqual(string path1, string path2)
+        {
+            if (path1 == null && path2 == null)
+            {
+                return true;
+            }
+
+            if (path1 == null || path2 == null)
+            {
+                return false;
+            }
+
+            return string.Equals(NormalizePath(path1), NormalizePath(path2), StringComparison.OrdinalIgnoreCase);
         }
 
         public string GetFileNameWithoutExtension(FileSystemMetadata info)
@@ -637,11 +709,17 @@ namespace Emby.Common.Implementations.IO
 
             // Cannot use Path.IsPathRooted because it returns false under mono when using windows-based paths, e.g. C:\\
 
+            if (_sharpCifsFileSystem.IsEnabledForPath(path))
+            {
+                return true;
+            }
+
             if (path.IndexOf("://", StringComparison.OrdinalIgnoreCase) != -1 &&
                 !path.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
+
             return true;
 
             //return Path.IsPathRooted(path);
@@ -655,20 +733,7 @@ namespace Emby.Common.Implementations.IO
                 return;
             }
 
-            var fileInfo = GetFileInfo(path);
-
-            if (fileInfo.Exists)
-            {
-                if (fileInfo.IsHidden)
-                {
-                    SetHidden(path, false);
-                }
-                if (fileInfo.IsReadOnly)
-                {
-                    SetReadOnly(path, false);
-                }
-            }
-
+            SetAttributes(path, false, false);
             File.Delete(path);
         }
 

@@ -27,7 +27,6 @@ namespace MediaBrowser.Providers.TV
 {
     public class TvdbSeriesProvider : IRemoteMetadataProvider<Series, SeriesInfo>, IHasOrder
     {
-        internal readonly SemaphoreSlim TvDbResourcePool = new SemaphoreSlim(2, 2);
         internal static TvdbSeriesProvider Current { get; private set; }
         private readonly IZipClient _zipClient;
         private readonly IHttpClient _httpClient;
@@ -220,7 +219,6 @@ namespace MediaBrowser.Providers.TV
             using (var zipStream = await _httpClient.Get(new HttpRequestOptions
             {
                 Url = url,
-                ResourcePool = TvDbResourcePool,
                 CancellationToken = cancellationToken,
                 BufferContent = false
 
@@ -265,7 +263,6 @@ namespace MediaBrowser.Providers.TV
             using (var result = await _httpClient.Get(new HttpRequestOptions
             {
                 Url = url,
-                ResourcePool = TvDbResourcePool,
                 CancellationToken = cancellationToken,
                 BufferContent = false
 
@@ -520,7 +517,6 @@ namespace MediaBrowser.Providers.TV
             using (var stream = await _httpClient.Get(new HttpRequestOptions
             {
                 Url = url,
-                ResourcePool = TvDbResourcePool,
                 CancellationToken = cancellationToken,
                 BufferContent = false
 
@@ -1154,7 +1150,7 @@ namespace MediaBrowser.Providers.TV
                                     // int.TryParse is local aware, so it can be probamatic, force us culture
                                     if (int.TryParse(val, NumberStyles.Integer, _usCulture, out rval))
                                     {
-                                        item.VoteCount = rval;
+                                        //item.VoteCount = rval;
                                     }
                                 }
 
@@ -1651,7 +1647,6 @@ namespace MediaBrowser.Providers.TV
             {
                 CancellationToken = cancellationToken,
                 Url = url,
-                ResourcePool = TvDbResourcePool,
                 BufferContent = false
             });
         }

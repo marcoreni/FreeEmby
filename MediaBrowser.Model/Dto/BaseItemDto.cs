@@ -64,7 +64,7 @@ namespace MediaBrowser.Model.Dto
         public DateTime? DateCreated { get; set; }
 
         public DateTime? DateLastMediaAdded { get; set; }
-        public ExtraType? ExtraType { get; set; }
+        public string ExtraType { get; set; }
 
         public int? AirsBeforeSeasonNumber { get; set; }
         public int? AirsAfterSeasonNumber { get; set; }
@@ -78,8 +78,6 @@ namespace MediaBrowser.Model.Dto
         
         public string PreferredMetadataLanguage { get; set; }
         public string PreferredMetadataCountryCode { get; set; }
-
-        public string AwardSummary { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether [supports synchronize].
@@ -165,12 +163,6 @@ namespace MediaBrowser.Model.Dto
 
         public string[] ProductionLocations { get; set; }
 
-        /// <summary>
-        /// Gets or sets the critic rating summary.
-        /// </summary>
-        /// <value>The critic rating summary.</value>
-        public string CriticRatingSummary { get; set; }
-
         public List<string> MultiPartGameFiles { get; set; }
 
         /// <summary>
@@ -228,12 +220,6 @@ namespace MediaBrowser.Model.Dto
         /// </summary>
         /// <value>The community rating.</value>
         public float? CommunityRating { get; set; }
-
-        /// <summary>
-        /// Gets or sets the vote count.
-        /// </summary>
-        /// <value>The vote count.</value>
-        public int? VoteCount { get; set; }
 
         /// <summary>
         /// Gets or sets the cumulative run time ticks.
@@ -354,7 +340,9 @@ namespace MediaBrowser.Model.Dto
         /// Gets or sets the studios.
         /// </summary>
         /// <value>The studios.</value>
-        public StudioDto[] Studios { get; set; }
+        public NameIdPair[] Studios { get; set; }
+
+        public NameIdPair[] GenreItems { get; set; }
 
         /// <summary>
         /// If the item does not have a logo, this will hold the Id of the Parent that has one.

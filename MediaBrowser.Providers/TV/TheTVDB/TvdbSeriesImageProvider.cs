@@ -16,7 +16,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
-using MediaBrowser.Common.IO;
+
 using MediaBrowser.Controller.IO;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Xml;
@@ -347,8 +347,7 @@ namespace MediaBrowser.Providers.TV
             return _httpClient.GetResponse(new HttpRequestOptions
             {
                 CancellationToken = cancellationToken,
-                Url = url,
-                ResourcePool = TvdbSeriesProvider.Current.TvDbResourcePool
+                Url = url
             });
         }
     }

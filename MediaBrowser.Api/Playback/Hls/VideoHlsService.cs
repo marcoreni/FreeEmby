@@ -20,6 +20,7 @@ namespace MediaBrowser.Api.Playback.Hls
     /// <summary>
     /// Class VideoHlsService
     /// </summary>
+    [Authenticated]
     public class VideoHlsService : BaseHlsService
     {
         public object Get(GetLiveHlsStream request)
@@ -122,6 +123,8 @@ namespace MediaBrowser.Api.Playback.Hls
             {
                 args += " -vsync " + state.OutputVideoSync;
             }
+
+            args += EncodingHelper.GetOutputFFlags(state);
 
             return args;
         }

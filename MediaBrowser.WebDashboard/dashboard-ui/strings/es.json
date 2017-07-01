@@ -1,5 +1,4 @@
 {
-    "HeaderOnNow": "En directo ahora",
     "LabelPrevious": "Anterior",
     "LabelFinish": "Terminar",
     "LabelNext": "Siguiente",
@@ -27,10 +26,12 @@
     "OptionHideWatchedContentFromLatestMedia": "Esconder medios vistos de los medios m\u00e1s recientes",
     "DeleteMedia": "Eliminar medios",
     "HeaderSync": "Sincronizar",
+    "HeaderUpcomingNews": "Pr\u00f3ximas Noticias",
     "ButtonOk": "OK",
     "ButtonCancel": "Cancelar",
     "ButtonExit": "Salir",
     "ButtonNew": "Nuevo",
+    "All": "Todo",
     "OptionDev": "Desarrollo",
     "OptionBeta": "Beta",
     "HeaderTaskTriggers": "Tareas de activaci\u00f3n",
@@ -428,7 +429,6 @@
     "OptionMissingEpisode": "Episodios que faltan",
     "OptionUnairedEpisode": "Episodios no emitidos",
     "OptionEpisodeSortName": "Nombre corto del episodio",
-    "OptionSeriesSortName": "Nombre de la serie",
     "OptionTvdbRating": "Valoraci\u00f3n tvdb",
     "HeaderAddTitles": "A\u00f1adir T\u00edtulos",
     "LabelEnableDlnaPlayTo": "Actvar la reproducci\u00f3n en DLNAi",
@@ -940,7 +940,6 @@
     "LabelAlbumArtists": "Artistas de los \u00e1lbumes",
     "LabelAlbum": "\u00c1lbum",
     "LabelCommunityRating": "Puntuaci\u00f3n de la comunidad",
-    "LabelAwardSummary": "Resumen de premios:",
     "LabelReleaseDate": "Fecha de lanzamiento:",
     "LabelEndDate": "Fecha de fin:",
     "LabelAirDate": "D\u00edas de emisi\u00f3n:",
@@ -1975,5 +1974,12 @@
     "LabelAutomaticallyRefreshInternetMetadataEvery": "Actualizar los metadatos autom\u00e1ticamente de internet:",
     "Never": "Nunca",
     "EveryNDays": "Cada {0} d\u00edas",
-    "HeaderNewDevices": "Nuevos dispositivos"
+    "HeaderNewDevices": "Nuevos dispositivos",
+    "HeaderOnNow": "En directo ahora",
+    "Downloading": "Descargando",
+    "LabelCertificatePassword": "Contrase\u00f1a del certificado",
+    "LabelCertificatePasswordHelp": "Si tu certificado requiere una contrase\u00f1a, por favor introducela aqui",
+    "Programs": "Programs",
+    "News": "News",
+    "HeaderDownloadSync": "Download & Sync"
 }

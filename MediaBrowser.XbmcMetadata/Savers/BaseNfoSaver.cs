@@ -18,8 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Xml;
-using MediaBrowser.Common.IO;
-using MediaBrowser.Controller.IO;
+
 using MediaBrowser.Model.Extensions;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Xml;
@@ -42,7 +41,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     "year",
                     "sorttitle",
                     "mpaa",
-                    "mpaadescription",
                     "aspectratio",
                     "website",
                     "collectionnumber",
@@ -56,7 +54,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     "tag",
                     "runtime",
                     "actor",
-                    "criticratingsummary",
                     "criticrating",
                     "fileinfo",
                     "director",
@@ -66,7 +63,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     "releasedate",
                     "outline",
                     "id",
-                    "votes",
                     "credits",
                     "originaltitle",
                     "watched",
@@ -84,7 +80,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                     "country",
                     "audiodbalbumid",
                     "audiodbartistid",
-                    "awardsummary",
                     "enddate",
                     "lockedfields",
                     "zap2itid",
@@ -212,7 +207,7 @@ namespace MediaBrowser.XbmcMetadata.Savers
 
         private void SaveToFile(Stream stream, string path)
         {
-            FileSystem.CreateDirectory(Path.GetDirectoryName(path));
+            FileSystem.CreateDirectory(FileSystem.GetDirectoryName(path));
 
             var file = FileSystem.GetFileInfo(path);
 
@@ -223,14 +218,9 @@ namespace MediaBrowser.XbmcMetadata.Savers
             {
                 if (file.IsHidden)
                 {
-                    FileSystem.SetHidden(path, false);
-
                     wasHidden = true;
                 }
-                if (file.IsReadOnly)
-                {
-                    FileSystem.SetReadOnly(path, false);
-                }
+                FileSystem.SetAttributes(path, false, false);
             }
 
             using (var filestream = FileSystem.GetFileStream(path, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read))
@@ -547,19 +537,15 @@ namespace MediaBrowser.XbmcMetadata.Savers
                 writer.WriteElementString("year", item.ProductionYear.Value.ToString(UsCulture));
             }
 
-            if (!string.IsNullOrEmpty(item.ForcedSortName))
+            var forcedSortName = item.ForcedSortName;
+            if (!string.IsNullOrEmpty(forcedSortName))
             {
-                writer.WriteElementString("sorttitle", item.ForcedSortName);
+                writer.WriteElementString("sorttitle", forcedSortName);
             }
 
             if (!string.IsNullOrEmpty(item.OfficialRating))
             {
                 writer.WriteElementString("mpaa", item.OfficialRating);
-            }
-
-            if (!string.IsNullOrEmpty(item.OfficialRatingDescription))
-            {
-                writer.WriteElementString("mpaadescription", item.OfficialRatingDescription);
             }
 
             var hasAspectRatio = item as IHasAspectRatio;
@@ -662,11 +648,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                 writer.WriteElementString("criticrating", item.CriticRating.Value.ToString(UsCulture));
             }
 
-            if (!string.IsNullOrEmpty(item.CriticRatingSummary))
-            {
-                writer.WriteElementString("criticratingsummary", item.CriticRatingSummary);
-            }
-
             var hasDisplayOrder = item as IHasDisplayOrder;
 
             if (hasDisplayOrder != null)
@@ -675,11 +656,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
                 {
                     writer.WriteElementString("displayorder", hasDisplayOrder.DisplayOrder);
                 }
-            }
-
-            if (item.VoteCount.HasValue)
-            {
-                writer.WriteElementString("votes", item.VoteCount.Value.ToString(UsCulture));
             }
 
             // Use original runtime here, actual file runtime later in MediaInfo
@@ -727,12 +703,6 @@ namespace MediaBrowser.XbmcMetadata.Savers
             foreach (var tag in item.Keywords)
             {
                 writer.WriteElementString("plotkeyword", tag);
-            }
-
-            var hasAwards = item as IHasAwards;
-            if (hasAwards != null && !string.IsNullOrEmpty(hasAwards.AwardSummary))
-            {
-                writer.WriteElementString("awardsummary", hasAwards.AwardSummary);
             }
 
             var externalId = item.GetProviderId(MetadataProviders.AudioDbArtist);

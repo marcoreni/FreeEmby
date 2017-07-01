@@ -105,7 +105,6 @@ namespace MediaBrowser.MediaEncoding.Encoder
             //state.OutputContainer = (container ?? string.Empty).TrimStart('.');
 
             state.OutputAudioBitrate = encodingHelper.GetAudioBitrateParam(state.Options, state.AudioStream);
-            state.OutputAudioSampleRate = request.AudioSampleRate;
 
             state.OutputAudioCodec = state.Options.AudioCodec;
 
@@ -263,7 +262,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
             var outputContainer = state.Options.OutputContainer;
 
             var mediaProfile = state.IsVideoRequest ?
-                profile.GetAudioMediaProfile(outputContainer, audioCodec, state.OutputAudioChannels, state.OutputAudioBitrate) :
+                profile.GetAudioMediaProfile(outputContainer, audioCodec, state.OutputAudioChannels, state.OutputAudioBitrate, state.OutputAudioSampleRate) :
                 profile.GetVideoMediaProfile(outputContainer,
                 audioCodec,
                 videoCodec,
@@ -277,6 +276,7 @@ namespace MediaBrowser.MediaEncoding.Encoder
                 state.TargetPacketLength,
                 state.TargetTimestamp,
                 state.IsTargetAnamorphic,
+                state.IsTargetInterlaced,
                 state.TargetRefFrames,
                 state.TargetVideoStreamCount,
                 state.TargetAudioStreamCount,

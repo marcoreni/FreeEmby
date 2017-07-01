@@ -15,6 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Xml;
 
@@ -227,6 +228,11 @@ namespace MediaBrowser.XbmcMetadata.Parsers
             }
         }
 
+        protected virtual string MovieDbParserSearchString
+        {
+            get { return "themoviedb.org/movie/"; }
+        }
+
         private void ParseProviderLinks(T item, string xml)
         {
             //Look for a match for the Regex pattern "tt" followed by 7 digits
@@ -238,7 +244,7 @@ namespace MediaBrowser.XbmcMetadata.Parsers
 
             // Support Tmdb
             // http://www.themoviedb.org/movie/36557
-            var srch = "themoviedb.org/movie/";
+            var srch = MovieDbParserSearchString;
             var index = xml.IndexOf(srch, StringComparison.OrdinalIgnoreCase);
 
             if (index != -1)
@@ -248,6 +254,23 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                 if (!string.IsNullOrWhiteSpace(tmdbId) && int.TryParse(tmdbId, NumberStyles.Any, CultureInfo.InvariantCulture, out value))
                 {
                     item.SetProviderId(MetadataProviders.Tmdb, tmdbId);
+                }
+            }
+
+            if (item is Series)
+            {
+                srch = "thetvdb.com/?tab=series&id=";
+
+                index = xml.IndexOf(srch, StringComparison.OrdinalIgnoreCase);
+
+                if (index != -1)
+                {
+                    var tvdbId = xml.Substring(index + srch.Length).TrimEnd('/');
+                    int value;
+                    if (!string.IsNullOrWhiteSpace(tvdbId) && int.TryParse(tvdbId, NumberStyles.Any, CultureInfo.InvariantCulture, out value))
+                    {
+                        item.SetProviderId(MetadataProviders.Tvdb, tvdbId);
+                    }
                 }
             }
         }
@@ -318,21 +341,6 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                         break;
                     }
 
-                case "awardsummary":
-                    {
-                        var text = reader.ReadElementContentAsString();
-                        var hasAwards = item as IHasAwards;
-                        if (hasAwards != null)
-                        {
-                            if (!string.IsNullOrWhiteSpace(text))
-                            {
-                                hasAwards.AwardSummary = text;
-                            }
-                        }
-
-                        break;
-                    }
-
                 case "sorttitle":
                     {
                         var val = reader.ReadElementContentAsString();
@@ -353,18 +361,6 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                         if (!string.IsNullOrWhiteSpace(val))
                         {
                             item.Overview = val;
-                        }
-
-                        break;
-                    }
-
-                case "criticratingsummary":
-                    {
-                        var val = reader.ReadElementContentAsString();
-
-                        if (!string.IsNullOrWhiteSpace(val))
-                        {
-                            item.CriticRatingSummary = val;
                         }
 
                         break;
@@ -460,17 +456,6 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                         if (!string.IsNullOrWhiteSpace(rating))
                         {
                             item.OfficialRating = rating;
-                        }
-                        break;
-                    }
-
-                case "mpaadescription":
-                    {
-                        var rating = reader.ReadElementContentAsString();
-
-                        if (!string.IsNullOrWhiteSpace(rating))
-                        {
-                            item.OfficialRatingDescription = rating;
                         }
                         break;
                     }
@@ -716,21 +701,6 @@ namespace MediaBrowser.XbmcMetadata.Parsers
                             }
                         }
 
-                        break;
-                    }
-
-                case "votes":
-                    {
-                        var val = reader.ReadElementContentAsString();
-                        if (!string.IsNullOrWhiteSpace(val))
-                        {
-                            int num;
-
-                            if (int.TryParse(val, NumberStyles.Integer, _usCulture, out num))
-                            {
-                                item.VoteCount = num;
-                            }
-                        }
                         break;
                     }
 

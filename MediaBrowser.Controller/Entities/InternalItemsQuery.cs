@@ -126,18 +126,33 @@ namespace MediaBrowser.Controller.Entities
         public bool? IsVirtualItem { get; set; }
 
         public Guid? ParentId { get; set; }
+        public string ParentType { get; set; }
         public string[] AncestorIds { get; set; }
         public string[] TopParentIds { get; set; }
 
-        public LocationType[] LocationTypes { get; set; }
+        public BaseItem Parent
+        {
+            set
+            {
+                if (value == null)
+                {
+                    ParentId = null;
+                    ParentType = null;
+                }
+                else
+                {
+                    ParentId = value.Id;
+                    ParentType = value.GetType().Name;
+                }
+            }
+        }
+
         public string[] PresetViews { get; set; }
-        public SourceType[] SourceTypes { get; set; }
-        public SourceType[] ExcludeSourceTypes { get; set; }
         public TrailerType[] TrailerTypes { get; set; }
+        public SourceType[] SourceTypes { get; set; }
 
         public DayOfWeek[] AirDays { get; set; }
         public SeriesStatus[] SeriesStatuses { get; set; }
-        public string AlbumArtistStartsWithOrGreater { get; set; }
         public string ExternalSeriesId { get; set; }
         public string ExternalId { get; set; }
 
@@ -157,42 +172,10 @@ namespace MediaBrowser.Controller.Entities
 
         public DateTime? MinDateCreated { get; set; }
         public DateTime? MinDateLastSaved { get; set; }
+        public DateTime? MinDateLastSavedForUser { get; set; }
 
         public DtoOptions DtoOptions { get; set; }
         public int MinSimilarityScore { get; set; }
-
-        public bool HasField(ItemFields name)
-        {
-            var fields = DtoOptions.Fields;
-
-            switch (name)
-            {
-                case ItemFields.ThemeSongIds:
-                case ItemFields.ThemeVideoIds:
-                case ItemFields.ProductionLocations:
-                case ItemFields.Keywords:
-                case ItemFields.Taglines:
-                case ItemFields.CustomRating:
-                case ItemFields.DateCreated:
-                case ItemFields.SortName:
-                case ItemFields.Overview:
-                case ItemFields.OfficialRatingDescription:
-                case ItemFields.HomePageUrl:
-                case ItemFields.VoteCount:
-                case ItemFields.DisplayMediaType:
-                //case ItemFields.ServiceName:
-                case ItemFields.Genres:
-                case ItemFields.Studios:
-                case ItemFields.Settings:
-                case ItemFields.OriginalTitle:
-                case ItemFields.Tags:
-                case ItemFields.DateLastMediaAdded:
-                case ItemFields.CriticRatingSummary:
-                    return fields.Count == 0 || fields.Contains(name);
-                default:
-                    return true;
-            }
-        }
 
         public InternalItemsQuery()
         {
@@ -230,11 +213,9 @@ namespace MediaBrowser.Controller.Entities
             TopParentIds = new string[] { };
             ExcludeTags = new string[] { };
             ExcludeInheritedTags = new string[] { };
-            LocationTypes = new LocationType[] { };
             PresetViews = new string[] { };
-            SourceTypes = new SourceType[] { };
-            ExcludeSourceTypes = new SourceType[] { };
             TrailerTypes = new TrailerType[] { };
+            SourceTypes = new SourceType[] { };
             AirDays = new DayOfWeek[] { };
             SeriesStatuses = new SeriesStatus[] { };
             OrderBy = new List<Tuple<string, SortOrder>>();
@@ -255,7 +236,7 @@ namespace MediaBrowser.Controller.Entities
 
                 if (policy.MaxParentalRating.HasValue)
                 {
-                    BlockUnratedItems = policy.BlockUnratedItems;
+                    BlockUnratedItems = policy.BlockUnratedItems.Where(i => i != UnratedItem.Other).ToArray();
                 }
 
                 ExcludeInheritedTags = policy.BlockedTags;

@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Common.Extensions;
-using MediaBrowser.Common.IO;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.IO;
@@ -236,10 +235,18 @@ namespace Emby.Server.Implementations.LiveTv.TunerHosts
                 }
                 else
                 {
-                    numberString = Path.GetFileNameWithoutExtension(mediaUrl.Split('/').Last());
-
-                    if (!IsValidChannelNumber(numberString))
+                    try
                     {
+                        numberString = Path.GetFileNameWithoutExtension(mediaUrl.Split('/').Last());
+
+                        if (!IsValidChannelNumber(numberString))
+                        {
+                            numberString = null;
+                        }
+                    }
+                    catch
+                    {
+                        // Seeing occasional argument exception here
                         numberString = null;
                     }
                 }

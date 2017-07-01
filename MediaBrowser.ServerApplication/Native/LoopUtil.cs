@@ -57,10 +57,6 @@ namespace MediaBrowser.ServerApplication.Native
         }
 
 
-        // Call this API to free the memory returned by the Enumeration API 
-        [DllImport("FirewallAPI.dll")]
-        internal static extern void NetworkIsolationFreeAppContainers(IntPtr pACs);
-
         // Call this API to load the current list of LoopUtil-enabled AppContainers
         [DllImport("FirewallAPI.dll")]
         internal static extern uint NetworkIsolationGetAppContainerConfig(out uint pdwCntACs, out IntPtr appContainerSids);
@@ -69,22 +65,12 @@ namespace MediaBrowser.ServerApplication.Native
         [DllImport("FirewallAPI.dll")]
         private static extern uint NetworkIsolationSetAppContainerConfig(uint pdwCntACs, SID_AND_ATTRIBUTES[] appContainerSids);
 
-
         // Use this API to convert a string SID into an actual SID 
         [DllImport("advapi32.dll", SetLastError = true)]
         internal static extern bool ConvertStringSidToSid(string strSid, out IntPtr pSid);
 
         [DllImport("advapi32", /*CharSet = CharSet.Auto,*/ SetLastError = true)]
-        static extern bool ConvertSidToStringSid(
-            [MarshalAs(UnmanagedType.LPArray)] byte[] pSID,
-            out IntPtr ptrSid);
-
-        [DllImport("advapi32", /*CharSet = CharSet.Auto,*/ SetLastError = true)]
         static extern bool ConvertSidToStringSid(IntPtr pSid, out string strSid);
-
-        // Use this API to convert a string reference (e.g. "@{blah.pri?ms-resource://whatever}") into a plain string 
-        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
-        internal static extern int SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf);
 
         // Call this API to enumerate all of the AppContainers on the system 
         [DllImport("FirewallAPI.dll")]
@@ -145,16 +131,6 @@ namespace MediaBrowser.ServerApplication.Native
             {
                 AppContainer app = new AppContainer(PI_app.appContainerName, PI_app.displayName, PI_app.workingDirectory, PI_app.appContainerSid);
 
-                var app_capabilities = LoopUtil.getCapabilites(PI_app.capabilities);
-                if (app_capabilities.Count > 0)
-                {
-                    //var sid = new SecurityIdentifier(app_capabilities[0], 0);
-
-                    IntPtr arrayValue = IntPtr.Zero;
-                    //var b = LoopUtil.ConvertStringSidToSid(app_capabilities[0].Sid, out arrayValue);
-                    //string mysid;
-                    //var b = LoopUtil.ConvertSidToStringSid(app_capabilities[0].Sid, out mysid);
-                }
                 app.LoopUtil = CheckLoopback(PI_app.appContainerSid);
                 Apps.Add(app);
             }
@@ -206,43 +182,6 @@ namespace MediaBrowser.ServerApplication.Native
             {
                 util.SaveLoopbackState();
             }
-            util.SaveLoopbackState();
-        }
-
-        private static List<SID_AND_ATTRIBUTES> getCapabilites(INET_FIREWALL_AC_CAPABILITIES cap)
-        {
-            List<SID_AND_ATTRIBUTES> mycap = new List<SID_AND_ATTRIBUTES>();
-
-            IntPtr arrayValue = cap.capabilities;
-
-            var structSize = Marshal.SizeOf(typeof(SID_AND_ATTRIBUTES));
-            for (var i = 0; i < cap.count; i++)
-            {
-                var cur = (SID_AND_ATTRIBUTES)Marshal.PtrToStructure(arrayValue, typeof(SID_AND_ATTRIBUTES));
-                mycap.Add(cur);
-                arrayValue = new IntPtr((long)(arrayValue) + (long)(structSize));
-            }
-
-            return mycap;
-
-        }
-
-        private static List<SID_AND_ATTRIBUTES> getContainerSID(INET_FIREWALL_AC_CAPABILITIES cap)
-        {
-            List<SID_AND_ATTRIBUTES> mycap = new List<SID_AND_ATTRIBUTES>();
-
-            IntPtr arrayValue = cap.capabilities;
-
-            var structSize = Marshal.SizeOf(typeof(SID_AND_ATTRIBUTES));
-            for (var i = 0; i < cap.count; i++)
-            {
-                var cur = (SID_AND_ATTRIBUTES)Marshal.PtrToStructure(arrayValue, typeof(SID_AND_ATTRIBUTES));
-                mycap.Add(cur);
-                arrayValue = new IntPtr((long)(arrayValue) + (long)(structSize));
-            }
-
-            return mycap;
-
         }
 
         private static List<SID_AND_ATTRIBUTES> PI_NetworkIsolationGetAppContainerConfig()
@@ -351,11 +290,5 @@ namespace MediaBrowser.ServerApplication.Native
             }
             return count;
         }
-
-        public void FreeResources()
-        {
-            NetworkIsolationFreeAppContainers(_pACs);
-        }
-
     }
 }

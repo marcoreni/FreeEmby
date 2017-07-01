@@ -8,17 +8,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.IO;
-using MediaBrowser.Common.IO;
+
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller;
-using MediaBrowser.Controller.IO;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.MediaEncoding;
+using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Diagnostics;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.LiveTv;
 using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Serialization;
+using MediaBrowser.Common.Configuration;
+using MediaBrowser.Controller.Library;
 
 namespace Emby.Server.Implementations.LiveTv.EmbyTV
 {
@@ -37,8 +40,9 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
         private readonly IProcessFactory _processFactory;
         private readonly IJsonSerializer _json;
         private readonly TaskCompletionSource<bool> _taskCompletionSource = new TaskCompletionSource<bool>();
+        private readonly IServerConfigurationManager _config;
 
-        public EncodedRecorder(ILogger logger, IFileSystem fileSystem, IMediaEncoder mediaEncoder, IServerApplicationPaths appPaths, IJsonSerializer json, LiveTvOptions liveTvOptions, IHttpClient httpClient, IProcessFactory processFactory)
+        public EncodedRecorder(ILogger logger, IFileSystem fileSystem, IMediaEncoder mediaEncoder, IServerApplicationPaths appPaths, IJsonSerializer json, LiveTvOptions liveTvOptions, IHttpClient httpClient, IProcessFactory processFactory, IServerConfigurationManager config)
         {
             _logger = logger;
             _fileSystem = fileSystem;
@@ -48,6 +52,7 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
             _liveTvOptions = liveTvOptions;
             _httpClient = httpClient;
             _processFactory = processFactory;
+            _config = config;
         }
 
         private string OutputFormat
@@ -59,6 +64,10 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                 if (string.Equals(format, "mkv", StringComparison.OrdinalIgnoreCase))
                 {
                     return "mkv";
+                }
+                if (string.Equals(format, "ts", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "ts";
                 }
 
                 return "mp4";
@@ -76,23 +85,35 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
 
         public string GetOutputPath(MediaSourceInfo mediaSource, string targetFile)
         {
-            return Path.ChangeExtension(targetFile, "." + OutputFormat);
+            var extension = OutputFormat;
+
+            if (string.Equals(extension, "mpegts", StringComparison.OrdinalIgnoreCase))
+            {
+                extension = "ts";
+            }
+
+            return Path.ChangeExtension(targetFile, "." + extension);
         }
 
-        public async Task Record(MediaSourceInfo mediaSource, string targetFile, TimeSpan duration, Action onStarted, CancellationToken cancellationToken)
+        public async Task Record(IDirectStreamProvider directStreamProvider, MediaSourceInfo mediaSource, string targetFile, TimeSpan duration, Action onStarted, CancellationToken cancellationToken)
         {
-            var durationToken = new CancellationTokenSource(duration);
-            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, durationToken.Token).Token;
+            //var durationToken = new CancellationTokenSource(duration);
+            //cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, durationToken.Token).Token;
 
             await RecordFromFile(mediaSource, mediaSource.Path, targetFile, duration, onStarted, cancellationToken).ConfigureAwait(false);
 
             _logger.Info("Recording completed to file {0}", targetFile);
         }
 
+        private EncodingOptions GetEncodingOptions()
+        {
+            return _config.GetConfiguration<EncodingOptions>("encoding");
+        }
+
         private Task RecordFromFile(MediaSourceInfo mediaSource, string inputFile, string targetFile, TimeSpan duration, Action onStarted, CancellationToken cancellationToken)
         {
             _targetPath = targetFile;
-            _fileSystem.CreateDirectory(Path.GetDirectoryName(targetFile));
+            _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(targetFile));
 
             var process = _processFactory.Create(new ProcessOptions
             {
@@ -118,7 +139,7 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
             _logger.Info(commandLineLogMessage);
 
             var logFilePath = Path.Combine(_appPaths.LogDirectoryPath, "record-transcode-" + Guid.NewGuid() + ".txt");
-            _fileSystem.CreateDirectory(Path.GetDirectoryName(logFilePath));
+            _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(logFilePath));
 
             // FFMpeg writes debug/error info to stderr. This is useful when debugging so let's put it in the log directory.
             _logFileStream = _fileSystem.GetFileStream(logFilePath, FileOpenMode.Create, FileAccessMode.Write, FileShareMode.Read, true);
@@ -161,45 +182,69 @@ namespace Emby.Server.Implementations.LiveTv.EmbyTV
                 videoArgs = "-codec:v:0 copy";
             }
 
-            var durationParam = " -t " + _mediaEncoder.GetTimeParameter(duration.Ticks);
-            var inputModifiers = "-fflags +genpts -async 1 -vsync -1";
-            var commandLineArgs = "-i \"{0}\"{5} {2} -map_metadata -1 -threads 0 {3}{4}{6} -y \"{1}\"";
+            videoArgs += " -fflags +genpts";
 
-            long startTimeTicks = 0;
-            //if (mediaSource.DateLiveStreamOpened.HasValue)
-            //{
-            //    var elapsed = DateTime.UtcNow - mediaSource.DateLiveStreamOpened.Value;
-            //    elapsed -= TimeSpan.FromSeconds(10);
-            //    if (elapsed.TotalSeconds >= 0)
-            //    {
-            //        startTimeTicks = elapsed.Ticks + startTimeTicks;
-            //    }
-            //}
+            var durationParam = " -t " + _mediaEncoder.GetTimeParameter(duration.Ticks);
+
+            var flags = new List<string>();
+            if (mediaSource.IgnoreDts)
+            {
+                flags.Add("+igndts");
+            }
+            if (mediaSource.IgnoreIndex)
+            {
+                flags.Add("+ignidx");
+            }
+            if (mediaSource.GenPtsInput)
+            {
+                flags.Add("+genpts");
+            }
+
+            var inputModifier = "-async 1 -vsync -1";
+
+            if (flags.Count > 0)
+            {
+                inputModifier += " -fflags " + string.Join("", flags.ToArray());
+            }
+
+            if (!string.IsNullOrWhiteSpace(GetEncodingOptions().HardwareAccelerationType))
+            {
+                inputModifier += " -hwaccel auto";
+            }
 
             if (mediaSource.ReadAtNativeFramerate)
             {
-                inputModifiers += " -re";
+                inputModifier += " -re";
             }
 
-            if (startTimeTicks > 0)
+            if (mediaSource.RequiresLooping)
             {
-                inputModifiers = "-ss " + _mediaEncoder.GetTimeParameter(startTimeTicks) + " " + inputModifiers;
+                inputModifier += " -stream_loop -1";
             }
 
             var analyzeDurationSeconds = 5;
             var analyzeDuration = " -analyzeduration " +
                   (analyzeDurationSeconds * 1000000).ToString(CultureInfo.InvariantCulture);
-            inputModifiers += analyzeDuration;
+            inputModifier += analyzeDuration;
 
             var subtitleArgs = CopySubtitles ? " -codec:s copy" : " -sn";
 
-            var outputParam = string.Equals(Path.GetExtension(targetFile), ".mp4", StringComparison.OrdinalIgnoreCase) ?
-                " -f mp4 -movflags frag_keyframe+empty_moov" :
-                string.Empty;
+            //var outputParam = string.Equals(Path.GetExtension(targetFile), ".mp4", StringComparison.OrdinalIgnoreCase) ?
+            //    " -f mp4 -movflags frag_keyframe+empty_moov" :
+            //    string.Empty;
 
-            commandLineArgs = string.Format(commandLineArgs, inputTempFile, targetFile, videoArgs, GetAudioArgs(mediaSource), subtitleArgs, durationParam, outputParam);
+            var outputParam = string.Empty;
 
-            return inputModifiers + " " + commandLineArgs;
+            var commandLineArgs = string.Format("-i \"{0}\"{5} {2} -map_metadata -1 -threads 0 {3}{4}{6} -y \"{1}\"", 
+                inputTempFile, 
+                targetFile, 
+                videoArgs, 
+                GetAudioArgs(mediaSource), 
+                subtitleArgs, 
+                durationParam, 
+                outputParam);
+
+            return inputModifier + " " + commandLineArgs;
         }
 
         private string GetAudioArgs(MediaSourceInfo mediaSource)

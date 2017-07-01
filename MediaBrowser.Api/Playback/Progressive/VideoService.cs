@@ -9,6 +9,7 @@ using MediaBrowser.Model.Serialization;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Services;
+using MediaBrowser.Model.System;
 
 namespace MediaBrowser.Api.Playback.Progressive
 {
@@ -62,9 +63,11 @@ namespace MediaBrowser.Api.Playback.Progressive
     /// <summary>
     /// Class VideoService
     /// </summary>
+    // TODO: In order to autheneticate this in the future, Dlna playback will require updating
+    //[Authenticated]
     public class VideoService : BaseProgressiveStreamingService
     {
-        public VideoService(IServerConfigurationManager serverConfig, IUserManager userManager, ILibraryManager libraryManager, IIsoManager isoManager, IMediaEncoder mediaEncoder, IFileSystem fileSystem, IDlnaManager dlnaManager, ISubtitleEncoder subtitleEncoder, IDeviceManager deviceManager, IMediaSourceManager mediaSourceManager, IZipClient zipClient, IJsonSerializer jsonSerializer, IAuthorizationContext authorizationContext, IImageProcessor imageProcessor) : base(serverConfig, userManager, libraryManager, isoManager, mediaEncoder, fileSystem, dlnaManager, subtitleEncoder, deviceManager, mediaSourceManager, zipClient, jsonSerializer, authorizationContext, imageProcessor)
+        public VideoService(IServerConfigurationManager serverConfig, IUserManager userManager, ILibraryManager libraryManager, IIsoManager isoManager, IMediaEncoder mediaEncoder, IFileSystem fileSystem, IDlnaManager dlnaManager, ISubtitleEncoder subtitleEncoder, IDeviceManager deviceManager, IMediaSourceManager mediaSourceManager, IZipClient zipClient, IJsonSerializer jsonSerializer, IAuthorizationContext authorizationContext, IImageProcessor imageProcessor, IEnvironmentInfo environmentInfo) : base(serverConfig, userManager, libraryManager, isoManager, mediaEncoder, fileSystem, dlnaManager, subtitleEncoder, deviceManager, mediaSourceManager, zipClient, jsonSerializer, authorizationContext, imageProcessor, environmentInfo)
         {
         }
 

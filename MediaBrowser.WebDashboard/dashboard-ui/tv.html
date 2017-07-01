@@ -1,43 +1,6 @@
 ﻿<div id="tvRecommendedPage" data-dom-cache="true" data-role="page" class="page libraryPage backdropPage pageWithAbsoluteTabs withTabs" data-backdroptype="series">
 
-    <div class="pageTabContent" id="suggestionsTab" data-index="0">
-        <div id="resumableSection" class="verticalSection">
-            <div class="sectionTitleContainer">
-                <h2 class="sectionTitle sectionTitle-cards padded-left">${HeaderContinueWatching}</h2>
-                <button is="emby-button" type="button" class="raised raised-mini sectionTitleButton categorySyncButton button-accent" data-category="Resume">
-                    <span>${ButtonSync}</span>
-                </button>
-            </div>
-
-            <div is="emby-itemscontainer" id="resumableItems" class="itemsContainer padded-left padded-right">
-            </div>
-        </div>
-
-        <div class="verticalSection">
-            <div class="sectionTitleContainer">
-                <h2 class="sectionTitle sectionTitle-cards padded-left nextUpHeader">${HeaderNextUp}</h2>
-                <button is="emby-button" type="button" class="raised raised-mini sectionTitleButton categorySyncButton button-accent" data-category="NextUp">
-                    <span>${ButtonSync}</span>
-                </button>
-            </div>
-            <div is="emby-itemscontainer" id="nextUpItems" class="itemsContainer vertical-wrap padded-left padded-right">
-            </div>
-        </div>
-        <p class="noNextUpItems" style="display: none;">${NoNextUpItemsMessage}</p>
-    </div>
-    <div class="pageTabContent" id="latestTab" data-index="1">
-        <div class="verticalSection">
-            <div class="sectionTitleContainer">
-                <h2 class="sectionTitle sectionTitle-cards padded-left">${HeaderLatestEpisodes}</h2>
-                <button is="emby-button" type="button" class="raised raised-mini categorySyncButton sectionTitleButton button-accent" data-category="Latest">
-                    <span>${ButtonSync}</span>
-                </button>
-            </div>
-            <div is="emby-itemscontainer" id="latestEpisodes" class="itemsContainer vertical-wrap padded-left padded-right">
-            </div>
-        </div>
-    </div>
-    <div class="pageTabContent" id="seriesTab" data-index="2">
+    <div class="pageTabContent" id="seriesTab" data-index="0">
         <div style="text-align: center; display: flex; flex-wrap: wrap; align-items: center; justify-content: center;padding:0 .5em 1em;">
             <div class="paging"></div>
             <button is="paper-icon-button-light" class="btnSelectView autoSize" title="${ButtonSelectView}"><i class="md-icon">view_comfy</i></button>
@@ -54,6 +17,43 @@
             <div class="paging"></div>
         </div>
     </div>
+    <div class="pageTabContent" id="suggestionsTab" data-index="1">
+        <div id="resumableSection" class="verticalSection">
+            <div class="sectionTitleContainer">
+                <h2 class="sectionTitle sectionTitle-cards padded-left">${HeaderContinueWatching}</h2>
+                <button is="emby-button" type="button" class="raised raised-mini sectionTitleButton categorySyncButton button-accent" data-category="Resume">
+                    <span>${ButtonDownload}</span>
+                </button>
+            </div>
+
+            <div is="emby-itemscontainer" id="resumableItems" class="itemsContainer padded-left padded-right">
+            </div>
+        </div>
+
+        <div class="verticalSection">
+            <div class="sectionTitleContainer">
+                <h2 class="sectionTitle sectionTitle-cards padded-left nextUpHeader">${HeaderNextUp}</h2>
+                <button is="emby-button" type="button" class="raised raised-mini sectionTitleButton categorySyncButton button-accent" data-category="NextUp">
+                    <span>${ButtonDownload}</span>
+                </button>
+            </div>
+            <div is="emby-itemscontainer" id="nextUpItems" class="itemsContainer vertical-wrap padded-left padded-right">
+            </div>
+        </div>
+        <p class="noNextUpItems" style="display: none;">${NoNextUpItemsMessage}</p>
+    </div>
+    <div class="pageTabContent" id="latestTab" data-index="2">
+        <div class="verticalSection">
+            <div class="sectionTitleContainer">
+                <h2 class="sectionTitle sectionTitle-cards padded-left">${HeaderLatestEpisodes}</h2>
+                <button is="emby-button" type="button" class="raised raised-mini categorySyncButton sectionTitleButton button-accent" data-category="Latest">
+                    <span>${ButtonDownload}</span>
+                </button>
+            </div>
+            <div is="emby-itemscontainer" id="latestEpisodes" class="itemsContainer vertical-wrap padded-left padded-right">
+            </div>
+        </div>
+    </div>
     <div class="pageTabContent" id="upcomingTab" data-index="3">
         <div id="upcomingItems">
         </div>
@@ -68,13 +68,9 @@
         <div id="items"></div>
     </div>
     <div class="pageTabContent" id="studiosTab" data-index="5">
-        <div class="viewSettings">
-            <div class="listTopPaging">
-            </div>
-        </div>
         <div is="emby-itemscontainer" id="items" class="itemsContainer padded-left padded-right vertical-wrap" style="text-align: center;"></div>
     </div>
-    <div class="pageTabContent" id="episodesTab" data-index="6">
+    <div class="pageTabContent" data-index="6">
         <div style="text-align: center; display: flex; flex-wrap: wrap; align-items: center; justify-content: center;padding:0 .5em 1em;">
             <div class="paging"></div>
             <button is="paper-icon-button-light" class="btnSelectView autoSize" title="${ButtonSelectView}"><i class="md-icon">view_comfy</i></button>
@@ -86,5 +82,7 @@
         <div style="text-align: center; display: flex; flex-wrap: wrap; align-items: center; justify-content: center;padding:.7em .5em;">
             <div class="paging"></div>
         </div>
+    </div>
+    <div class="pageTabContent" data-index="7" style="padding-top:1em;">
     </div>
 </div>

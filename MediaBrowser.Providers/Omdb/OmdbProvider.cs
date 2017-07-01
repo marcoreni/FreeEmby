@@ -19,7 +19,6 @@ namespace MediaBrowser.Providers.Omdb
 {
     public class OmdbProvider
     {
-        internal static readonly SemaphoreSlim ResourcePool = new SemaphoreSlim(1, 1);
         private readonly IJsonSerializer _jsonSerializer;
         private readonly IFileSystem _fileSystem;
         private readonly IServerConfigurationManager _configurationManager;
@@ -79,7 +78,7 @@ namespace MediaBrowser.Providers.Omdb
                 && int.TryParse(result.imdbVotes, NumberStyles.Number, _usCulture, out voteCount)
                 && voteCount >= 0)
             {
-                item.VoteCount = voteCount;
+                //item.VoteCount = voteCount;
             }
 
             float imdbRating;
@@ -104,17 +103,17 @@ namespace MediaBrowser.Providers.Omdb
             ParseAdditionalMetadata(itemResult, result);
         }
 
-        public async Task<bool> FetchEpisodeData<T>(MetadataResult<T> itemResult, int episodeNumber, int seasonNumber, string imdbId, string language, string country, CancellationToken cancellationToken)
+        public async Task<bool> FetchEpisodeData<T>(MetadataResult<T> itemResult, int episodeNumber, int seasonNumber, string episodeImdbId, string seriesImdbId, string language, string country, CancellationToken cancellationToken)
             where T : BaseItem
         {
-            if (string.IsNullOrWhiteSpace(imdbId))
+            if (string.IsNullOrWhiteSpace(seriesImdbId))
             {
-                throw new ArgumentNullException("imdbId");
+                throw new ArgumentNullException("seriesImdbId");
             }
 
             T item = itemResult.Item;
 
-            var seasonResult = await GetSeasonRootObject(imdbId, seasonNumber, cancellationToken).ConfigureAwait(false);
+            var seasonResult = await GetSeasonRootObject(seriesImdbId, seasonNumber, cancellationToken).ConfigureAwait(false);
 
             if (seasonResult == null)
             {
@@ -123,12 +122,28 @@ namespace MediaBrowser.Providers.Omdb
 
             RootObject result = null;
 
-            foreach (var episode in (seasonResult.Episodes ?? new RootObject[] { }))
+            if (!string.IsNullOrWhiteSpace(episodeImdbId))
             {
-                if (episode.Episode == episodeNumber)
+                foreach (var episode in (seasonResult.Episodes ?? new RootObject[] { }))
                 {
-                    result = episode;
-                    break;
+                    if (string.Equals(episodeImdbId, episode.imdbID, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result = episode;
+                        break;
+                    }
+                }
+            }
+
+            // finally, search by numbers
+            if (result == null)
+            {
+                foreach (var episode in (seasonResult.Episodes ?? new RootObject[] { }))
+                {
+                    if (episode.Episode == episodeNumber)
+                    {
+                        result = episode;
+                        break;
+                    }
                 }
             }
 
@@ -170,7 +185,7 @@ namespace MediaBrowser.Providers.Omdb
                 && int.TryParse(result.imdbVotes, NumberStyles.Number, _usCulture, out voteCount)
                 && voteCount >= 0)
             {
-                item.VoteCount = voteCount;
+                //item.VoteCount = voteCount;
             }
 
             float imdbRating;
@@ -250,9 +265,16 @@ namespace MediaBrowser.Providers.Omdb
             return false;
         }
 
-        public static async Task<string> GetOmdbBaseUrl(CancellationToken cancellationToken)
+        public static string GetOmdbUrl(string query, CancellationToken cancellationToken)
         {
-            return "https://www.omdbapi.com";
+            var url = "https://www.omdbapi.com?apikey=fe53f97e";
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                url += "&" + query;
+            }
+
+            return url;
         }
 
         private async Task<string> EnsureItemInfo(string imdbId, CancellationToken cancellationToken)
@@ -277,13 +299,12 @@ namespace MediaBrowser.Providers.Omdb
                 }
             }
 
-            var baseUrl = await GetOmdbBaseUrl(cancellationToken).ConfigureAwait(false);
-            var url = string.Format(baseUrl + "/?i={0}&plot=full&tomatoes=true&r=json", imdbParam);
+            var url = GetOmdbUrl(string.Format("i={0}&plot=full&tomatoes=true&r=json", imdbParam), cancellationToken);
 
             using (var stream = await GetOmdbResponse(_httpClient, url, cancellationToken).ConfigureAwait(false))
             {
                 var rootObject = _jsonSerializer.DeserializeFromStream<RootObject>(stream);
-                _fileSystem.CreateDirectory(Path.GetDirectoryName(path));
+                _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(path));
                 _jsonSerializer.SerializeToFile(rootObject, path);
             }
 
@@ -312,13 +333,12 @@ namespace MediaBrowser.Providers.Omdb
                 }
             }
 
-            var baseUrl = await GetOmdbBaseUrl(cancellationToken).ConfigureAwait(false);
-            var url = string.Format(baseUrl + "/?i={0}&season={1}&detail=full", imdbParam, seasonId);
+            var url = GetOmdbUrl(string.Format("i={0}&season={1}&detail=full", imdbParam, seasonId), cancellationToken);
 
             using (var stream = await GetOmdbResponse(_httpClient, url, cancellationToken).ConfigureAwait(false))
             {
                 var rootObject = _jsonSerializer.DeserializeFromStream<SeasonRootObject>(stream);
-                _fileSystem.CreateDirectory(Path.GetDirectoryName(path));
+                _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(path));
                 _jsonSerializer.SerializeToFile(rootObject, path);
             }
 
@@ -330,7 +350,6 @@ namespace MediaBrowser.Providers.Omdb
             return httpClient.Get(new HttpRequestOptions
             {
                 Url = url,
-                ResourcePool = ResourcePool,
                 CancellationToken = cancellationToken,
                 BufferContent = true,
                 EnableDefaultUserAgent = true
@@ -385,12 +404,6 @@ namespace MediaBrowser.Providers.Omdb
                 {
                     item.AddGenre(genre);
                 }
-            }
-
-            var hasAwards = item as IHasAwards;
-            if (hasAwards != null && !string.IsNullOrEmpty(result.Awards))
-            {
-                hasAwards.AwardSummary = WebUtility.HtmlDecode(result.Awards);
             }
 
             if (isConfiguredForEnglish)

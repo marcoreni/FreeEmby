@@ -16,7 +16,11 @@ namespace MediaBrowser.Controller.LiveTv
         {
             var list = base.GetUserDataKeys();
 
-            list.Insert(0, GetClientTypeName() + "-" + Name);
+            if (!ConfigurationManager.Configuration.DisableLiveTvChannelUserDataName)
+            {
+                list.Insert(0, GetClientTypeName() + "-" + Name);
+            }
+
             return list;
         }
 
@@ -51,7 +55,6 @@ namespace MediaBrowser.Controller.LiveTv
         public override SourceType SourceType
         {
             get { return SourceType.LiveTV; }
-            set { }
         }
 
         [IgnoreDataMember]
@@ -97,7 +100,7 @@ namespace MediaBrowser.Controller.LiveTv
                 }
             }
 
-            return Number + "-" + (Name ?? string.Empty);
+            return (Number ?? string.Empty) + "-" + (Name ?? string.Empty);
         }
 
         [IgnoreDataMember]

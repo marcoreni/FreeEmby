@@ -202,8 +202,7 @@ namespace Emby.Server.Implementations.Library
 
         private bool IsValidUsernameCharacter(char i)
         {
-            return char.IsLetterOrDigit(i) || char.Equals(i, '-') || char.Equals(i, '_') || char.Equals(i, '\'') ||
-                   char.Equals(i, '.');
+            return !char.Equals(i, '<') && !char.Equals(i, '>');
         }
 
         public string MakeValidUsername(string username)
@@ -942,7 +941,8 @@ namespace Emby.Server.Implementations.Library
         {
             return new UserPolicy
             {
-                EnableSync = true
+                EnableContentDownloading = true,
+                EnableSyncTranscoding = true
             };
         }
 
@@ -964,7 +964,7 @@ namespace Emby.Server.Implementations.Library
 
             var path = GetPolifyFilePath(user);
 
-            _fileSystem.CreateDirectory(Path.GetDirectoryName(path));
+            _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(path));
 
             lock (_policySyncLock)
             {
@@ -1051,7 +1051,7 @@ namespace Emby.Server.Implementations.Library
                 config = _jsonSerializer.DeserializeFromString<UserConfiguration>(json);
             }
 
-            _fileSystem.CreateDirectory(Path.GetDirectoryName(path));
+            _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(path));
 
             lock (_configSyncLock)
             {

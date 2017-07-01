@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Common.IO;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Serialization;
@@ -88,7 +87,7 @@ namespace MediaBrowser.Controller.Entities
 
         private List<Guid> _childrenIds = null;
         private readonly object _childIdsLock = new object();
-        protected override IEnumerable<BaseItem> LoadChildren()
+        protected override List<BaseItem> LoadChildren()
         {
             lock (_childIdsLock)
             {

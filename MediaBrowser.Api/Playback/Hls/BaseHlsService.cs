@@ -13,10 +13,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Common.IO;
-using MediaBrowser.Controller.IO;
 using MediaBrowser.Controller.Net;
-using MediaBrowser.Model.IO;
 
 namespace MediaBrowser.Api.Playback.Hls
 {
@@ -205,7 +202,7 @@ namespace MediaBrowser.Api.Playback.Hls
 
                             while (!reader.EndOfStream)
                             {
-                                var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                                var line =  reader.ReadLine();
 
                                 if (line.IndexOf("#EXTINF:", StringComparison.OrdinalIgnoreCase) != -1)
                                 {
@@ -237,11 +234,11 @@ namespace MediaBrowser.Api.Playback.Hls
 
             try
             {
-                return FileSystem.GetFileStream(tmpPath, FileOpenMode.Open, FileAccessMode.Read, FileShareMode.ReadWrite, true);
+                return FileSystem.GetFileStream(tmpPath, FileOpenMode.Open, FileAccessMode.Read, FileShareMode.ReadWrite, FileOpenOptions.SequentialScan);
             }
             catch (IOException)
             {
-                return FileSystem.GetFileStream(path, FileOpenMode.Open, FileAccessMode.Read, FileShareMode.ReadWrite, true);
+                return FileSystem.GetFileStream(path, FileOpenMode.Open, FileAccessMode.Read, FileShareMode.ReadWrite, FileOpenOptions.SequentialScan);
             }
         }
 
@@ -271,7 +268,7 @@ namespace MediaBrowser.Api.Playback.Hls
             var useGenericSegmenter = true;
             if (useGenericSegmenter)
             {
-                var outputTsArg = Path.Combine(Path.GetDirectoryName(outputPath), Path.GetFileNameWithoutExtension(outputPath)) + "%d" + GetSegmentFileExtension(state.Request);
+                var outputTsArg = Path.Combine(FileSystem.GetDirectoryName(outputPath), Path.GetFileNameWithoutExtension(outputPath)) + "%d" + GetSegmentFileExtension(state.Request);
 
                 var timeDeltaParam = String.Empty;
 

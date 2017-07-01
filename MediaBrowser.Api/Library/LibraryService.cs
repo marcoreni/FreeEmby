@@ -21,12 +21,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Common.IO;
+
 using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.IO;
 using MediaBrowser.Model.Globalization;
 using MediaBrowser.Model.Services;
+using MediaBrowser.Common.Extensions;
 
 namespace MediaBrowser.Api.Library
 {
@@ -427,7 +428,11 @@ namespace MediaBrowser.Api.Library
         {
             var series = _libraryManager.GetItemList(new InternalItemsQuery
             {
-                IncludeItemTypes = new[] { typeof(Series).Name }
+                IncludeItemTypes = new[] { typeof(Series).Name },
+                DtoOptions = new DtoOptions(false)
+                {
+                    EnableImages = false
+                }
 
             }).Where(i => string.Equals(request.TvdbId, i.GetProviderId(MetadataProviders.Tvdb), StringComparison.OrdinalIgnoreCase)).ToArray();
 
@@ -448,7 +453,11 @@ namespace MediaBrowser.Api.Library
         {
             var movies = _libraryManager.GetItemList(new InternalItemsQuery
             {
-                IncludeItemTypes = new[] { typeof(Movie).Name }
+                IncludeItemTypes = new[] { typeof(Movie).Name },
+                DtoOptions = new DtoOptions(false)
+                {
+                    EnableImages = false
+                }
 
             }).ToArray();
 
@@ -667,8 +676,11 @@ namespace MediaBrowser.Api.Library
                 Limit = 0,
                 Recursive = true,
                 IsVirtualItem = false,
-                SourceTypes = new[] { SourceType.Library },
-                IsFavorite = request.IsFavorite
+                IsFavorite = request.IsFavorite,
+                DtoOptions = new DtoOptions(false)
+                {
+                    EnableImages = false
+                }
             };
 
             return _libraryManager.GetItemsResult(query).TotalRecordCount;
@@ -819,6 +831,11 @@ namespace MediaBrowser.Api.Library
                                   : (Folder)_libraryManager.RootFolder)
                            : _libraryManager.GetItemById(request.Id);
 
+            if (item == null)
+            {
+                throw new ResourceNotFoundException("Item not found.");
+            }
+
             while (item.ThemeSongIds.Count == 0 && request.InheritFromParent && item.GetParent() != null)
             {
                 item = item.GetParent();
@@ -863,6 +880,11 @@ namespace MediaBrowser.Api.Library
                                   : (Folder)_libraryManager.RootFolder)
                            : _libraryManager.GetItemById(request.Id);
 
+            if (item == null)
+            {
+                throw new ResourceNotFoundException("Item not found.");
+            }
+
             while (item.ThemeVideoIds.Count == 0 && request.InheritFromParent && item.GetParent() != null)
             {
                 item = item.GetParent();
@@ -898,7 +920,11 @@ namespace MediaBrowser.Api.Library
             var query = new InternalItemsQuery(user)
             {
                 IncludeItemTypes = includeTypes,
-                Recursive = true
+                Recursive = true,
+                DtoOptions = new DtoOptions(false)
+                {
+                    EnableImages = false
+                }
             };
 
             var items = _libraryManager.GetItemList(query);

@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Model.Globalization;
 
@@ -190,11 +191,11 @@ namespace Emby.Server.Implementations.Library
             return _libraryManager.GetShadowView(parent, viewType, sortName, cancellationToken);
         }
 
-        public List<Tuple<BaseItem, List<BaseItem>>> GetLatestItems(LatestItemsQuery request)
+        public List<Tuple<BaseItem, List<BaseItem>>> GetLatestItems(LatestItemsQuery request, DtoOptions options)
         {
             var user = _userManager.GetUserById(request.UserId);
 
-            var libraryItems = GetItemsForLatestItems(user, request);
+            var libraryItems = GetItemsForLatestItems(user, request, options);
 
             var list = new List<Tuple<BaseItem, List<BaseItem>>>();
 
@@ -230,7 +231,7 @@ namespace Emby.Server.Implementations.Library
             return list;
         }
 
-        private IEnumerable<BaseItem> GetItemsForLatestItems(User user, LatestItemsQuery request)
+        private IEnumerable<BaseItem> GetItemsForLatestItems(User user, LatestItemsQuery request, DtoOptions options)
         {
             var parentId = request.ParentId;
 
@@ -279,7 +280,7 @@ namespace Emby.Server.Implementations.Library
 
             } : new string[] { };
 
-            return _libraryManager.GetItemList(new InternalItemsQuery(user)
+            var query = new InternalItemsQuery(user)
             {
                 IncludeItemTypes = includeItemTypes,
                 SortOrder = SortOrder.Descending,
@@ -288,10 +289,16 @@ namespace Emby.Server.Implementations.Library
                 ExcludeItemTypes = excludeItemTypes,
                 IsVirtualItem = false,
                 Limit = limit * 5,
-                SourceTypes = parents.Count == 0 ? new[] { SourceType.Library } : new SourceType[] { },
-                IsPlayed = isPlayed
+                IsPlayed = isPlayed,
+                DtoOptions = options
+            };
 
-            }, parents);
+            if (parents.Count == 0)
+            {
+                return _libraryManager.GetItemList(query, false);
+            }
+
+            return _libraryManager.GetItemList(query, parents);
         }
     }
 }

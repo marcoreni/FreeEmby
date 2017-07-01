@@ -13,7 +13,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Common.IO;
+
 using MediaBrowser.Controller.IO;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Extensions;
@@ -94,7 +94,7 @@ namespace MediaBrowser.Providers.Movies
                     tmdbId = movieInfo.id.ToString(_usCulture);
 
                     dataFilePath = MovieDbProvider.Current.GetDataFilePath(tmdbId, language);
-                    _fileSystem.CreateDirectory(Path.GetDirectoryName(dataFilePath));
+                    _fileSystem.CreateDirectory(_fileSystem.GetDirectoryName(dataFilePath));
                     _jsonSerializer.SerializeToFile(movieInfo, dataFilePath);
                 }
             }
@@ -173,7 +173,7 @@ namespace MediaBrowser.Providers.Movies
                 movie.CommunityRating = rating;
             }
 
-            movie.VoteCount = movieData.vote_count;
+            //movie.VoteCount = movieData.vote_count;
 
             //release date and certification are retrieved based on configured country and we fall back on US if not there and to minimun release date if still no match
             if (movieData.releases != null && movieData.releases.countries != null)

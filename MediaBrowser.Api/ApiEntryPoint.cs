@@ -15,7 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Common.IO;
+
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Diagnostics;
@@ -399,7 +399,7 @@ namespace MediaBrowser.Api
             }
         }
 
-        private async void PingTimer(TranscodingJob job, bool isProgressCheckIn)
+        private void PingTimer(TranscodingJob job, bool isProgressCheckIn)
         {
             if (job.HasExited)
             {
@@ -633,7 +633,7 @@ namespace MediaBrowser.Api
         /// <param name="outputFilePath">The output file path.</param>
         private void DeleteHlsPartialStreamFiles(string outputFilePath)
         {
-            var directory = Path.GetDirectoryName(outputFilePath);
+            var directory = _fileSystem.GetDirectoryName(outputFilePath);
             var name = Path.GetFileNameWithoutExtension(outputFilePath);
 
             var filesToDelete = _fileSystem.GetFilePaths(directory)

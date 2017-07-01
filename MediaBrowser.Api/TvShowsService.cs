@@ -48,7 +48,7 @@ namespace MediaBrowser.Api
         /// Fields to return within the items, in addition to basic information
         /// </summary>
         /// <value>The fields.</value>
-        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, CriticRatingSummary, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
+        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
         public string Fields { get; set; }
 
         [ApiMember(Name = "SeriesId", Description = "Optional. Filter by series id", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET")]
@@ -108,7 +108,7 @@ namespace MediaBrowser.Api
         /// Fields to return within the items, in addition to basic information
         /// </summary>
         /// <value>The fields.</value>
-        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, CriticRatingSummary, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
+        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
         public string Fields { get; set; }
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace MediaBrowser.Api
         /// Fields to return within the items, in addition to basic information
         /// </summary>
         /// <value>The fields.</value>
-        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, CriticRatingSummary, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
+        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
         public string Fields { get; set; }
 
         [ApiMember(Name = "Id", Description = "The series id", IsRequired = true, DataType = "string", ParameterType = "query", Verb = "GET")]
@@ -215,7 +215,7 @@ namespace MediaBrowser.Api
         /// Fields to return within the items, in addition to basic information
         /// </summary>
         /// <value>The fields.</value>
-        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, CriticRatingSummary, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
+        [ApiMember(Name = "Fields", Description = "Optional. Specify additional fields of information to return in the output. This allows multiple, comma delimeted. Options: Budget, Chapters, DateCreated, Genres, HomePageUrl, IndexOptions, MediaStreams, Overview, ParentId, Path, People, ProviderIds, PrimaryImageAspectRatio, Revenue, SortName, Studios, Taglines, TrailerUrls", IsRequired = false, DataType = "string", ParameterType = "query", Verb = "GET", AllowMultiple = true)]
         public string Fields { get; set; }
 
         [ApiMember(Name = "Id", Description = "The series id", IsRequired = true, DataType = "string", ParameterType = "query", Verb = "GET")]
@@ -374,6 +374,8 @@ namespace MediaBrowser.Api
         /// <returns>System.Object.</returns>
         public async Task<object> Get(GetNextUpEpisodes request)
         {
+            var options = GetDtoOptions(_authContext, request);
+
             var result = _tvSeriesManager.GetNextUp(new NextUpQuery
             {
                 Limit = request.Limit,
@@ -382,11 +384,9 @@ namespace MediaBrowser.Api
                 StartIndex = request.StartIndex,
                 UserId = request.UserId,
                 EnableTotalRecordCount = request.EnableTotalRecordCount
-            });
+            }, options);
 
             var user = _userManager.GetUserById(request.UserId);
-
-            var options = GetDtoOptions(_authContext, request);
 
             var returnItems = (await _dtoService.GetBaseItemDtos(result.Items, options, user).ConfigureAwait(false)).ToArray();
 
@@ -432,14 +432,14 @@ namespace MediaBrowser.Api
                 throw new ResourceNotFoundException("Series not found");
             }
 
-            var seasons = (await series.GetItems(new InternalItemsQuery(user)
+            var seasons = (series.GetItems(new InternalItemsQuery(user)
             {
                 IsMissing = request.IsMissing,
                 IsVirtualUnaired = request.IsVirtualUnaired,
                 IsSpecialSeason = request.IsSpecialSeason,
                 AdjacentTo = request.AdjacentTo
 
-            }).ConfigureAwait(false)).Items.OfType<Season>();
+            })).Items.OfType<Season>();
 
             var dtoOptions = GetDtoOptions(_authContext, request);
 
@@ -469,6 +469,8 @@ namespace MediaBrowser.Api
 
             IEnumerable<Episode> episodes;
 
+            var dtoOptions = GetDtoOptions(_authContext, request);
+
             if (!string.IsNullOrWhiteSpace(request.SeasonId))
             {
                 var season = _libraryManager.GetItemById(new Guid(request.SeasonId)) as Season;
@@ -478,7 +480,7 @@ namespace MediaBrowser.Api
                     throw new ResourceNotFoundException("No season exists with Id " + request.SeasonId);
                 }
 
-                episodes = season.GetEpisodes(user);
+                episodes = season.GetEpisodes(user, dtoOptions);
             }
             else if (request.Season.HasValue)
             {
@@ -489,7 +491,7 @@ namespace MediaBrowser.Api
                     throw new ResourceNotFoundException("Series not found");
                 }
 
-                var season = series.GetSeasons(user).FirstOrDefault(i => i.IndexNumber == request.Season.Value);
+                var season = series.GetSeasons(user, dtoOptions).FirstOrDefault(i => i.IndexNumber == request.Season.Value);
 
                 if (season == null)
                 {
@@ -497,7 +499,7 @@ namespace MediaBrowser.Api
                 }
                 else
                 {
-                    episodes = series.GetSeasonEpisodes(season, user);
+                    episodes = season.GetEpisodes(user, dtoOptions);
                 }
             }
             else
@@ -509,7 +511,7 @@ namespace MediaBrowser.Api
                     throw new ResourceNotFoundException("Series not found");
                 }
 
-                episodes = series.GetEpisodes(user);
+                episodes = series.GetEpisodes(user, dtoOptions);
             }
 
             // Filter after the fact in case the ui doesn't want them
@@ -542,8 +544,6 @@ namespace MediaBrowser.Api
             var returnList = returnItems.ToList();
 
             var pagedItems = ApplyPaging(returnList, request.StartIndex, request.Limit);
-
-            var dtoOptions = GetDtoOptions(_authContext, request);
 
             var dtos = (await _dtoService.GetBaseItemDtos(pagedItems, dtoOptions, user).ConfigureAwait(false))
                 .ToArray();

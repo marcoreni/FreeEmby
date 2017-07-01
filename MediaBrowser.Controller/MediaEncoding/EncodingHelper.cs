@@ -732,7 +732,7 @@ namespace MediaBrowser.Controller.MediaEncoding
 
             if (string.Equals(videoEncoder, "libx264", StringComparison.OrdinalIgnoreCase))
             {
-                param += " -x264opts:0 subme=0:rc_lookahead=10:me_range=4:me=dia:no_chroma_me:8x8dct=0:partitions=none";
+                param += " -x264opts:0 subme=0:me_range=4:rc_lookahead=10:me=dia:no_chroma_me:8x8dct=0:partitions=none";
             }
 
             if (!string.Equals(videoEncoder, "h264_omx", StringComparison.OrdinalIgnoreCase) &&
@@ -968,7 +968,7 @@ namespace MediaBrowser.Controller.MediaEncoding
                 {
                     if (bitrate.HasValue && videoStream.BitRate.HasValue)
                     {
-                        bitrate = Math.Min(bitrate.Value, videoStream.BitRate.Value);
+                        bitrate = GetMinBitrate(bitrate.Value, videoStream.BitRate.Value);
                     }
                 }
             }
@@ -981,9 +981,25 @@ namespace MediaBrowser.Controller.MediaEncoding
                 // If a max bitrate was requested, don't let the scaled bitrate exceed it
                 if (request.VideoBitRate.HasValue)
                 {
-                    bitrate = Math.Min(bitrate.Value, request.VideoBitRate.Value);
+                    bitrate = GetMinBitrate(bitrate.Value, request.VideoBitRate.Value);
                 }
             }
+
+            return bitrate;
+        }
+
+        private int GetMinBitrate(int sourceBitrate, int requestedBitrate)
+        {
+            if (sourceBitrate <= 2000000)
+            {
+                sourceBitrate *= 2;
+            }
+            else if (sourceBitrate <= 3000000)
+            {
+                sourceBitrate = Convert.ToInt32(sourceBitrate * 1.5);
+            }
+
+            var bitrate = Math.Min(sourceBitrate, requestedBitrate);
 
             return bitrate;
         }
@@ -1306,7 +1322,8 @@ namespace MediaBrowser.Controller.MediaEncoding
                 filters.Add("format=nv12|vaapi");
                 filters.Add("hwupload");
             }
-            else if (state.DeInterlace && !string.Equals(outputVideoCodec, "h264_vaapi", StringComparison.OrdinalIgnoreCase))
+
+            if (state.DeInterlace && !string.Equals(outputVideoCodec, "h264_vaapi", StringComparison.OrdinalIgnoreCase))
             {
                 filters.Add("yadif=0:-1:0");
             }
@@ -1517,12 +1534,6 @@ namespace MediaBrowser.Controller.MediaEncoding
             inputModifier += " " + GetFastSeekCommandLineParameter(state.BaseRequest);
             inputModifier = inputModifier.Trim();
 
-            //inputModifier += " -fflags +genpts+ignidx+igndts";
-            //if (state.IsVideoRequest && genPts)
-            //{
-            //    inputModifier += " -fflags +genpts";
-            //}
-
             if (!string.IsNullOrEmpty(state.InputAudioSync))
             {
                 inputModifier += " -async " + state.InputAudioSync;
@@ -1536,6 +1547,33 @@ namespace MediaBrowser.Controller.MediaEncoding
             if (state.ReadInputAtNativeFramerate)
             {
                 inputModifier += " -re";
+            }
+
+            var flags = new List<string>();
+            if (state.IgnoreInputDts)
+            {
+                flags.Add("+igndts");
+            }
+            if (state.IgnoreInputIndex)
+            {
+                flags.Add("+ignidx");
+            }
+            if (state.GenPtsInput)
+            {
+                flags.Add("+genpts");
+            }
+            if (state.DiscardCorruptFramesInput)
+            {
+                flags.Add("+discardcorrupt");
+            }
+            if (state.EnableFastSeekInput)
+            {
+                flags.Add("+fastseek");
+            }
+
+            if (flags.Count > 0)
+            {
+                inputModifier += " -fflags " + string.Join("", flags.ToArray());
             }
 
             var videoDecoder = GetVideoDecoder(state, encodingOptions);
@@ -1566,7 +1604,7 @@ namespace MediaBrowser.Controller.MediaEncoding
                 }
 
                 // Only do this for video files due to sometimes unpredictable codec names coming from BDInfo
-                if (state.RunTimeTicks.HasValue && state.VideoType == VideoType.VideoFile && string.IsNullOrWhiteSpace(encodingOptions.HardwareAccelerationType))
+                if (state.VideoType == VideoType.VideoFile && state.RunTimeTicks.HasValue && string.IsNullOrWhiteSpace(encodingOptions.HardwareAccelerationType))
                 {
                     foreach (var stream in state.MediaSource.MediaStreams)
                     {
@@ -1725,6 +1763,12 @@ namespace MediaBrowser.Controller.MediaEncoding
 
             if (state.VideoStream != null && !string.IsNullOrWhiteSpace(state.VideoStream.Codec))
             {
+                if (!string.IsNullOrWhiteSpace(encodingOptions.HardwareAccelerationType))
+                {
+                    // causing unpredictable results
+                    //return "-hwaccel auto";
+                }
+
                 if (string.Equals(encodingOptions.HardwareAccelerationType, "qsv", StringComparison.OrdinalIgnoreCase))
                 {
                     switch (state.MediaSource.VideoStream.Codec.ToLower())
@@ -1758,6 +1802,20 @@ namespace MediaBrowser.Controller.MediaEncoding
                             if (_mediaEncoder.SupportsDecoder("vc1_qsv"))
                             {
                                 return "-c:v vc1_qsv ";
+                            }
+                            break;
+                    }
+                }
+
+                else if (string.Equals(encodingOptions.HardwareAccelerationType, "nvenc", StringComparison.OrdinalIgnoreCase))
+                {
+                    switch (state.MediaSource.VideoStream.Codec.ToLower())
+                    {
+                        case "avc":
+                        case "h264":
+                            if (_mediaEncoder.SupportsDecoder("h264_cuvid"))
+                            {
+                                return "-c:v h264_cuvid ";
                             }
                             break;
                     }
@@ -1850,6 +1908,22 @@ namespace MediaBrowser.Controller.MediaEncoding
                 ).Trim();
         }
 
+        public string GetOutputFFlags(EncodingJobInfo state)
+        {
+            var flags = new List<string>();
+            if (state.GenPtsOutput)
+            {
+                flags.Add("+genpts");
+            }
+
+            if (flags.Count > 0)
+            {
+                return " -fflags " + string.Join("", flags.ToArray());
+            }
+
+            return string.Empty;
+        }
+
         public string GetProgressiveVideoArguments(EncodingJobInfo state, EncodingOptions encodingOptions, string videoCodec, string defaultH264Preset)
         {
             var args = "-codec:v:0 " + videoCodec;
@@ -1929,6 +2003,8 @@ namespace MediaBrowser.Controller.MediaEncoding
                 args += " -vsync " + state.OutputVideoSync;
             }
 
+            args += GetOutputFFlags(state);
+
             return args;
         }
 
@@ -1974,5 +2050,65 @@ namespace MediaBrowser.Controller.MediaEncoding
 
             return args;
         }
+
+        public string GetProgressiveAudioFullCommandLine(EncodingJobInfo state, EncodingOptions encodingOptions, string outputPath)
+        {
+            var audioTranscodeParams = new List<string>();
+
+            var bitrate = state.OutputAudioBitrate;
+
+            if (bitrate.HasValue)
+            {
+                audioTranscodeParams.Add("-ab " + bitrate.Value.ToString(_usCulture));
+            }
+
+            if (state.OutputAudioChannels.HasValue)
+            {
+                audioTranscodeParams.Add("-ac " + state.OutputAudioChannels.Value.ToString(_usCulture));
+            }
+
+            // opus will fail on 44100
+            if (!string.Equals(state.OutputAudioCodec, "opus", StringComparison.OrdinalIgnoreCase))
+            {
+                if (state.OutputAudioSampleRate.HasValue)
+                {
+                    audioTranscodeParams.Add("-ar " + state.OutputAudioSampleRate.Value.ToString(_usCulture));
+                }
+            }
+
+            var albumCoverInput = string.Empty;
+            var mapArgs = string.Empty;
+            var metadata = string.Empty;
+            var vn = string.Empty;
+
+            var hasArt = !string.IsNullOrWhiteSpace(state.AlbumCoverPath);
+
+            if (hasArt)
+            {
+                albumCoverInput = " -i \"" + state.AlbumCoverPath + "\"";
+                mapArgs = " -map 0:a -map 1:v -c:1:v copy";
+                metadata = " -metadata:s:v title=\"Album cover\" -metadata:s:v comment=\"Cover(Front)\"";
+            }
+            else
+            {
+                vn = " -vn";
+            }
+
+            var threads = GetNumberOfThreads(state, encodingOptions, false);
+
+            var inputModifier = GetInputModifier(state, encodingOptions);
+
+            return string.Format("{0} {1}{7}{8} -threads {2}{3} {4} -id3v2_version 3 -write_id3v1 1{6} -y \"{5}\"",
+                inputModifier,
+                GetInputArgument(state, encodingOptions),
+                threads,
+                vn,
+                string.Join(" ", audioTranscodeParams.ToArray()),
+                outputPath,
+                metadata,
+                albumCoverInput,
+                mapArgs).Trim();
+        }
+
     }
 }
